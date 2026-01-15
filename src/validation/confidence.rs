@@ -1,423 +1,257 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::Address;
 use crate::finders::result::FinderResults;
 use std::collections::HashMap;
 
-pub struct ConfidenceCalculator {
+pub struct ConfidenceScorer {
     weights: ConfidenceWeights,
-    history: Vec<HistoricalConfidence>,
 }
 
-impl ConfidenceCalculator {
+impl ConfidenceScorer {
     pub fn new() -> Self {
         Self {
             weights: ConfidenceWeights::default(),
-            history: Vec::new(),
         }
     }
 
-    pub fn with_weights(mut self, weights: ConfidenceWeights) -> Self {
-        self.weights = weights;
-        self
+    pub fn with_weights(weights: ConfidenceWeights) -> Self {
+        Self { weights }
     }
 
-    pub fn calculate_function_confidence(&self, addr: Address, evidence: &FunctionEvidence) -> ConfidenceScore {
-        let mut score = 0.0;
-        let mut factors = Vec::new();
+    pub fn calculate_all(&self, results: &FinderResults) -> HashMap<String, f64> {
+        let mut scores = HashMap::new();
 
-        if evidence.has_valid_prologue {
-            score += self.weights.valid_prologue;
-            factors.push(ConfidenceFactor::new("Valid prologue", self.weights.valid_prologue));
+        for (name, _addr) in &results.functions {
+            let score = self.score_function(name, results);
+            scores.insert(format!("func:{}", name), score);
         }
 
-        if evidence.in_executable_region {
-            score += self.weights.executable_region;
-            factors.push(ConfidenceFactor::new("In executable region", self.weights.executable_region));
+        for (struct_name, fields) in &results.structure_offsets {
+            for (field, offset) in fields {
+                let score = self.score_offset(struct_name, field, *offset, results);
+                scores.insert(format!("offset:{}.{}", struct_name, field), score);
+            }
         }
 
-        if evidence.aligned {
-            score += self.weights.alignment;
-            factors.push(ConfidenceFactor::new("Properly aligned", self.weights.alignment));
-        }
-
-        if evidence.has_cross_references {
-            score += self.weights.cross_references;
-            factors.push(ConfidenceFactor::new("Has cross-references", self.weights.cross_references));
-        }
-
-        if evidence.symbol_matched {
-            score += self.weights.symbol_match;
-            factors.push(ConfidenceFactor::new("Symbol matched", self.weights.symbol_match));
-        }
-
-        if evidence.pattern_matched {
-            score += self.weights.pattern_match;
-            factors.push(ConfidenceFactor::new("Pattern matched", self.weights.pattern_match));
-        }
-
-        if evidence.xref_validated {
-            score += self.weights.xref_validation;
-            factors.push(ConfidenceFactor::new("XRef validated", self.weights.xref_validation));
-        }
-
-        ConfidenceScore {
-            score: score.min(1.0),
-            level: ConfidenceLevel::from_score(score),
-            factors,
-        }
+        scores
     }
 
-    pub fn calculate_offset_confidence(&self, offset: u64, evidence: &OffsetEvidence) -> ConfidenceScore {
-        let mut score = 0.0;
-        let mut factors = Vec::new();
+    fn score_function(&self, name: &str, results: &FinderResults) -> f64 {
+        let mut score = 0.5;
 
-        if evidence.properly_aligned {
+        if name.starts_with("lua_") || name.starts_with("luaL_") || name.starts_with("luau_") {
+            score += 0.2;
+        }
+
+        if results.functions.len() > 10 {
+            score += 0.1;
+        }
+
+        let name_lower = name.to_lowercase();
+        let known_functions = [
+            "lua_pushvalue", "lua_settop", "lua_gettop", "lua_pcall",
+            "lua_newthread", "lua_pushstring", "lua_getfield",
+            "luau_load", "lua_call", "lua_createtable",
+        ];
+        if known_functions.iter().any(|&f| name_lower.contains(f)) {
             score += 0.15;
-            factors.push(ConfidenceFactor::new("Properly aligned", 0.15));
         }
 
-        if evidence.within_struct_bounds {
-            score += 0.2;
-            factors.push(ConfidenceFactor::new("Within struct bounds", 0.2));
-        }
-
-        if evidence.type_consistent {
-            score += 0.25;
-            factors.push(ConfidenceFactor::new("Type consistent", 0.25));
-        }
-
-        if evidence.access_pattern_valid {
-            score += 0.2;
-            factors.push(ConfidenceFactor::new("Access pattern valid", 0.2));
-        }
-
-        if evidence.multiple_references {
-            score += 0.2;
-            factors.push(ConfidenceFactor::new("Multiple references found", 0.2));
-        }
-
-        ConfidenceScore {
-            score: score.min(1.0),
-            level: ConfidenceLevel::from_score(score),
-            factors,
-        }
+        score.min(1.0)
     }
 
-    pub fn aggregate_confidence(&self, scores: &[ConfidenceScore]) -> ConfidenceScore {
-        if scores.is_empty() {
-            return ConfidenceScore {
-                score: 0.0,
-                level: ConfidenceLevel::VeryLow,
-                factors: Vec::new(),
-            };
+    fn score_offset(&self, struct_name: &str, field: &str, offset: u64, results: &FinderResults) -> f64 {
+        let mut score = 0.5;
+
+        if offset % 8 == 0 {
+            score += 0.1;
+        } else if offset % 4 == 0 {
+            score += 0.05;
         }
 
-        let avg_score: f64 = scores.iter().map(|s| s.score).sum::<f64>() / scores.len() as f64;
-
-        let min_score = scores.iter()
-            .map(|s| s.score)
-            .min_by(|a, b| a.partial_cmp(b).unwrap())
-            .unwrap_or(0.0);
-
-        let combined = avg_score * 0.7 + min_score * 0.3;
-
-        ConfidenceScore {
-            score: combined,
-            level: ConfidenceLevel::from_score(combined),
-            factors: vec![
-                ConfidenceFactor::new(&format!("Average of {} scores", scores.len()), avg_score),
-                ConfidenceFactor::new("Minimum score influence", min_score * 0.3),
-            ],
+        if offset < 0x200 {
+            score += 0.1;
+        } else if offset < 0x1000 {
+            score += 0.05;
         }
+
+        let struct_lower = struct_name.to_lowercase();
+        if struct_lower.contains("lua") || struct_lower.contains("state") ||
+           struct_lower.contains("proto") || struct_lower.contains("closure") {
+            score += 0.1;
+        }
+
+        let field_lower = field.to_lowercase();
+        let known_fields = ["top", "base", "stack", "identity", "capabilities", "proto", "env"];
+        if known_fields.iter().any(|&f| field_lower.contains(f)) {
+            score += 0.1;
+        }
+
+        if let Some(fields) = results.structure_offsets.get(struct_name) {
+            if fields.len() > 3 {
+                score += 0.05;
+            }
+        }
+
+        score.min(1.0)
     }
 
-    pub fn adjust_for_consistency(&self, results: &FinderResults) -> HashMap<String, f64> {
-        let mut adjustments = HashMap::new();
+    pub fn score_overall(&self, results: &FinderResults) -> f64 {
+        let mut total_score = 0.0;
+        let mut count = 0;
 
-        for (name, &addr) in &results.functions {
-            let base_confidence = 0.5;
-
-            let xref_count = 1;
-            let xref_bonus = (xref_count as f64 * 0.05).min(0.2);
-
-            let adjusted = (base_confidence + xref_bonus).min(1.0);
-            adjustments.insert(name.clone(), adjusted);
+        for name in results.functions.keys() {
+            total_score += self.score_function(name, results);
+            count += 1;
         }
 
-        adjustments
-    }
-
-    pub fn compare_with_history(&self, current: &ConfidenceScore) -> HistoryComparison {
-        if self.history.is_empty() {
-            return HistoryComparison {
-                trend: ConfidenceTrend::Stable,
-                average_historical: 0.0,
-                current_vs_average: 0.0,
-            };
+        for (struct_name, fields) in &results.structure_offsets {
+            for (field, offset) in fields {
+                total_score += self.score_offset(struct_name, field, *offset, results);
+                count += 1;
+            }
         }
 
-        let avg_historical: f64 = self.history.iter()
-            .map(|h| h.score)
-            .sum::<f64>() / self.history.len() as f64;
-
-        let diff = current.score - avg_historical;
-
-        let trend = if diff > 0.1 {
-            ConfidenceTrend::Improving
-        } else if diff < -0.1 {
-            ConfidenceTrend::Declining
+        if count == 0 {
+            0.0
         } else {
-            ConfidenceTrend::Stable
-        };
-
-        HistoryComparison {
-            trend,
-            average_historical: avg_historical,
-            current_vs_average: diff,
+            total_score / count as f64
         }
     }
 
-    pub fn add_to_history(&mut self, name: String, score: f64) {
-        self.history.push(HistoricalConfidence {
-            name,
-            score,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs(),
-        });
+    pub fn filter_by_confidence(&self, results: &FinderResults, min_confidence: f64) -> FinderResults {
+        let mut filtered = FinderResults::new();
 
-        if self.history.len() > 1000 {
-            self.history.remove(0);
+        for (name, addr) in &results.functions {
+            if self.score_function(name, results) >= min_confidence {
+                filtered.functions.insert(name.clone(), *addr);
+            }
         }
+
+        for (struct_name, fields) in &results.structure_offsets {
+            for (field, offset) in fields {
+                if self.score_offset(struct_name, field, *offset, results) >= min_confidence {
+                    filtered.structure_offsets
+                        .entry(struct_name.clone())
+                        .or_default()
+                        .insert(field.clone(), *offset);
+                }
+            }
+        }
+
+        filtered.classes = results.classes.clone();
+        filtered.properties = results.properties.clone();
+        filtered.methods = results.methods.clone();
+        filtered.constants = results.constants.clone();
+
+        filtered
+    }
+
+    pub fn get_high_confidence(&self, results: &FinderResults) -> FinderResults {
+        self.filter_by_confidence(results, 0.8)
+    }
+
+    pub fn get_medium_confidence(&self, results: &FinderResults) -> FinderResults {
+        self.filter_by_confidence(results, 0.5)
     }
 }
 
-impl Default for ConfidenceCalculator {
+impl Default for ConfidenceScorer {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ConfidenceScore {
-    pub score: f64,
-    pub level: ConfidenceLevel,
-    pub factors: Vec<ConfidenceFactor>,
-}
-
-impl ConfidenceScore {
-    pub fn new(score: f64) -> Self {
-        Self {
-            score,
-            level: ConfidenceLevel::from_score(score),
-            factors: Vec::new(),
-        }
-    }
-
-    pub fn with_factor(mut self, factor: ConfidenceFactor) -> Self {
-        self.factors.push(factor);
-        self
-    }
-
-    pub fn is_high(&self) -> bool {
-        matches!(self.level, ConfidenceLevel::High | ConfidenceLevel::VeryHigh)
-    }
-
-    pub fn is_acceptable(&self) -> bool {
-        self.score >= 0.5
-    }
-
-    pub fn as_percentage(&self) -> f64 {
-        self.score * 100.0
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConfidenceLevel {
-    VeryHigh,
-    High,
-    Medium,
-    Low,
-    VeryLow,
-}
-
-impl ConfidenceLevel {
-    pub fn from_score(score: f64) -> Self {
-        if score >= 0.9 {
-            ConfidenceLevel::VeryHigh
-        } else if score >= 0.75 {
-            ConfidenceLevel::High
-        } else if score >= 0.5 {
-            ConfidenceLevel::Medium
-        } else if score >= 0.25 {
-            ConfidenceLevel::Low
-        } else {
-            ConfidenceLevel::VeryLow
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ConfidenceLevel::VeryHigh => "Very High",
-            ConfidenceLevel::High => "High",
-            ConfidenceLevel::Medium => "Medium",
-            ConfidenceLevel::Low => "Low",
-            ConfidenceLevel::VeryLow => "Very Low",
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConfidenceFactor {
-    pub name: String,
-    pub contribution: f64,
-}
-
-impl ConfidenceFactor {
-    pub fn new(name: &str, contribution: f64) -> Self {
-        Self {
-            name: name.to_string(),
-            contribution,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub struct ConfidenceWeights {
-    pub valid_prologue: f64,
-    pub executable_region: f64,
-    pub alignment: f64,
-    pub cross_references: f64,
-    pub symbol_match: f64,
     pub pattern_match: f64,
-    pub xref_validation: f64,
+    pub symbol_match: f64,
+    pub xref_match: f64,
+    pub heuristic_match: f64,
+    pub alignment_bonus: f64,
+    pub known_name_bonus: f64,
 }
 
 impl Default for ConfidenceWeights {
     fn default() -> Self {
         Self {
-            valid_prologue: 0.15,
-            executable_region: 0.1,
-            alignment: 0.05,
-            cross_references: 0.15,
-            symbol_match: 0.2,
-            pattern_match: 0.2,
-            xref_validation: 0.15,
+            pattern_match: 0.3,
+            symbol_match: 0.4,
+            xref_match: 0.25,
+            heuristic_match: 0.15,
+            alignment_bonus: 0.1,
+            known_name_bonus: 0.2,
         }
     }
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct FunctionEvidence {
-    pub has_valid_prologue: bool,
-    pub in_executable_region: bool,
-    pub aligned: bool,
-    pub has_cross_references: bool,
-    pub symbol_matched: bool,
-    pub pattern_matched: bool,
-    pub xref_validated: bool,
-}
+impl ConfidenceWeights {
+    pub fn high_precision() -> Self {
+        Self {
+            pattern_match: 0.4,
+            symbol_match: 0.5,
+            xref_match: 0.3,
+            heuristic_match: 0.1,
+            alignment_bonus: 0.05,
+            known_name_bonus: 0.15,
+        }
+    }
 
-impl FunctionEvidence {
-    pub fn new() -> Self {
+    pub fn balanced() -> Self {
         Self::default()
     }
 
-    pub fn with_prologue(mut self) -> Self {
-        self.has_valid_prologue = true;
-        self
-    }
-
-    pub fn in_executable(mut self) -> Self {
-        self.in_executable_region = true;
-        self
-    }
-
-    pub fn is_aligned(mut self) -> Self {
-        self.aligned = true;
-        self
-    }
-
-    pub fn has_xrefs(mut self) -> Self {
-        self.has_cross_references = true;
-        self
-    }
-
-    pub fn symbol_match(mut self) -> Self {
-        self.symbol_matched = true;
-        self
-    }
-
-    pub fn pattern_match(mut self) -> Self {
-        self.pattern_matched = true;
-        self
-    }
-
-    pub fn xref_valid(mut self) -> Self {
-        self.xref_validated = true;
-        self
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct OffsetEvidence {
-    pub properly_aligned: bool,
-    pub within_struct_bounds: bool,
-    pub type_consistent: bool,
-    pub access_pattern_valid: bool,
-    pub multiple_references: bool,
-}
-
-impl OffsetEvidence {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn aligned(mut self) -> Self {
-        self.properly_aligned = true;
-        self
-    }
-
-    pub fn in_bounds(mut self) -> Self {
-        self.within_struct_bounds = true;
-        self
-    }
-
-    pub fn type_ok(mut self) -> Self {
-        self.type_consistent = true;
-        self
-    }
-
-    pub fn access_ok(mut self) -> Self {
-        self.access_pattern_valid = true;
-        self
-    }
-
-    pub fn multi_ref(mut self) -> Self {
-        self.multiple_references = true;
-        self
+    pub fn high_recall() -> Self {
+        Self {
+            pattern_match: 0.2,
+            symbol_match: 0.3,
+            xref_match: 0.2,
+            heuristic_match: 0.25,
+            alignment_bonus: 0.15,
+            known_name_bonus: 0.25,
+        }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct HistoricalConfidence {
-    pub name: String,
-    pub score: f64,
-    pub timestamp: u64,
+pub struct ConfidenceReport {
+    pub scores: HashMap<String, f64>,
+    pub average_score: f64,
+    pub high_confidence_count: usize,
+    pub medium_confidence_count: usize,
+    pub low_confidence_count: usize,
 }
 
-#[derive(Debug, Clone)]
-pub struct HistoryComparison {
-    pub trend: ConfidenceTrend,
-    pub average_historical: f64,
-    pub current_vs_average: f64,
-}
+impl ConfidenceReport {
+    pub fn from_scores(scores: HashMap<String, f64>) -> Self {
+        let average_score = if scores.is_empty() {
+            0.0
+        } else {
+            scores.values().sum::<f64>() / scores.len() as f64
+        };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ConfidenceTrend {
-    Improving,
-    Stable,
-    Declining,
+        let high_confidence_count = scores.values().filter(|&&s| s >= 0.8).count();
+        let medium_confidence_count = scores.values().filter(|&&s| s >= 0.5 && s < 0.8).count();
+        let low_confidence_count = scores.values().filter(|&&s| s < 0.5).count();
+
+        Self {
+            scores,
+            average_score,
+            high_confidence_count,
+            medium_confidence_count,
+            low_confidence_count,
+        }
+    }
+
+    pub fn format_report(&self) -> String {
+        let mut output = String::new();
+
+        output.push_str(&format!("=== Confidence Report ===\n"));
+        output.push_str(&format!("Average Score: {:.2}\n", self.average_score));
+        output.push_str(&format!("High Confidence (>=0.8): {}\n", self.high_confidence_count));
+        output.push_str(&format!("Medium Confidence (0.5-0.8): {}\n", self.medium_confidence_count));
+        output.push_str(&format!("Low Confidence (<0.5): {}\n", self.low_confidence_count));
+
+        output
+    }
 }

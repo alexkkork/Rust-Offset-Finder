@@ -42,7 +42,7 @@ impl TaskSpawnFinder {
 
                         if self.validate_task_spawn(addr) {
                             return Some(FinderResult {
-                                name: "taskSpawn".to_string(),
+                                name: "task_spawn".to_string(),
                                 address: addr,
                                 confidence: 0.86,
                                 method: "pattern".to_string(),
@@ -74,7 +74,7 @@ impl TaskSpawnFinder {
 
                     if self.validate_task_spawn(func_start) {
                         return Some(FinderResult {
-                            name: "taskSpawn".to_string(),
+                            name: "task_spawn".to_string(),
                             address: func_start,
                             confidence: 0.82,
                             method: "string_xref".to_string(),
@@ -99,7 +99,7 @@ impl TaskSpawnFinder {
 
                     if self.validate_task_spawn(func_start) {
                         return Some(FinderResult {
-                            name: "taskSpawn".to_string(),
+                            name: "task_spawn".to_string(),
                             address: func_start,
                             confidence: 0.65,
                             method: "heuristic".to_string(),

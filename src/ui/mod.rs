@@ -1,17 +1,19 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
 pub mod cli;
 pub mod progress;
 pub mod terminal;
+pub mod errors;
 pub mod display;
 pub mod theme;
 pub mod spinner;
 pub mod table;
 pub mod banner;
 
-pub use cli::CliInterface;
+pub use cli::{Args, Command, CommandHandler};
 pub use progress::ProgressManager;
-pub use terminal::TerminalUI;
+pub use terminal::Terminal;
+pub use errors::{ErrorDisplay, ErrorHandler};
 pub use display::DisplayRenderer;
 pub use theme::Theme;
 pub use spinner::Spinner;
@@ -22,7 +24,7 @@ use std::io::{self, Write};
 
 pub struct UIManager {
     progress: ProgressManager,
-    terminal: TerminalUI,
+    terminal: Terminal,
     theme: Theme,
     verbose: bool,
     quiet: bool,
@@ -32,7 +34,7 @@ impl UIManager {
     pub fn new() -> Self {
         Self {
             progress: ProgressManager::new(),
-            terminal: TerminalUI::new(),
+            terminal: Terminal::new(),
             theme: Theme::default(),
             verbose: false,
             quiet: false,

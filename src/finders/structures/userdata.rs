@@ -91,7 +91,7 @@ impl InstanceUserdataFinder {
         if let Some(offset) = self.find_weak_ref_offset(start, end) {
             results.push(StructureOffsetResult::new(
                 "InstanceUserdata".to_string(),
-                "weakRef".to_string(),
+                "weak_ref".to_string(),
                 offset,
             ).with_confidence(0.85).with_method("heuristic"));
         }

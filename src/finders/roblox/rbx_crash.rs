@@ -42,7 +42,7 @@ impl RbxCrashFinder {
 
                         if self.validate_rbx_crash(addr) {
                             return Some(FinderResult {
-                                name: "rbxCrash".to_string(),
+                                name: "rbx_crash".to_string(),
                                 address: addr,
                                 confidence: 0.90,
                                 method: "pattern".to_string(),
@@ -75,7 +75,7 @@ impl RbxCrashFinder {
 
                     if self.validate_rbx_crash(func_start) {
                         return Some(FinderResult {
-                            name: "rbxCrash".to_string(),
+                            name: "rbx_crash".to_string(),
                             address: func_start,
                             confidence: 0.85,
                             method: "string_xref".to_string(),
@@ -100,7 +100,7 @@ impl RbxCrashFinder {
 
                     if self.validate_rbx_crash(func_start) {
                         return Some(FinderResult {
-                            name: "rbxCrash".to_string(),
+                            name: "rbx_crash".to_string(),
                             address: func_start,
                             confidence: 0.70,
                             method: "heuristic".to_string(),

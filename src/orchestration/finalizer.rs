@@ -3,7 +3,7 @@
 use crate::config::Config;
 use crate::finders::result::FinderResults;
 use crate::output::manager::OutputManager;
-use crate::output::json::OffsetOutput;
+use crate::output::OffsetOutput;
 use std::collections::HashMap;
 
 pub struct OutputFinalizer {

@@ -417,3 +417,52 @@ impl CombinedResults {
         map
     }
 }
+
+#[derive(Debug, Clone, Default)]
+pub struct FinderResults {
+    pub functions: HashMap<String, Address>,
+    pub structure_offsets: HashMap<String, HashMap<String, u64>>,
+    pub classes: HashMap<String, Address>,
+    pub properties: HashMap<String, HashMap<String, u64>>,
+    pub methods: HashMap<String, HashMap<String, Address>>,
+    pub constants: HashMap<String, u64>,
+}
+
+impl FinderResults {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn merge(&mut self, other: FinderResults) {
+        self.functions.extend(other.functions);
+        for (struct_name, fields) in other.structure_offsets {
+            self.structure_offsets.entry(struct_name).or_default().extend(fields);
+        }
+        self.classes.extend(other.classes);
+        for (class_name, props) in other.properties {
+            self.properties.entry(class_name).or_default().extend(props);
+        }
+        for (class_name, methods) in other.methods {
+            self.methods.entry(class_name).or_default().extend(methods);
+        }
+        self.constants.extend(other.constants);
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.functions.is_empty()
+            && self.structure_offsets.is_empty()
+            && self.classes.is_empty()
+            && self.properties.is_empty()
+            && self.methods.is_empty()
+            && self.constants.is_empty()
+    }
+
+    pub fn total_count(&self) -> usize {
+        self.functions.len()
+            + self.structure_offsets.values().map(|m| m.len()).sum::<usize>()
+            + self.classes.len()
+            + self.properties.values().map(|m| m.len()).sum::<usize>()
+            + self.methods.values().map(|m| m.len()).sum::<usize>()
+            + self.constants.len()
+    }
+}

@@ -42,7 +42,7 @@ impl SctxResumeFinder {
 
                         if self.validate_sctx_resume(addr) {
                             return Some(FinderResult {
-                                name: "sctxResume".to_string(),
+                                name: "sctx_resume".to_string(),
                                 address: addr,
                                 confidence: 0.87,
                                 method: "pattern".to_string(),
@@ -74,7 +74,7 @@ impl SctxResumeFinder {
 
                     if self.validate_sctx_resume(func_start) {
                         return Some(FinderResult {
-                            name: "sctxResume".to_string(),
+                            name: "sctx_resume".to_string(),
                             address: func_start,
                             confidence: 0.82,
                             method: "string_xref".to_string(),
@@ -99,7 +99,7 @@ impl SctxResumeFinder {
 
                     if self.validate_sctx_resume(func_start) {
                         return Some(FinderResult {
-                            name: "sctxResume".to_string(),
+                            name: "sctx_resume".to_string(),
                             address: func_start,
                             confidence: 0.65,
                             method: "heuristic".to_string(),

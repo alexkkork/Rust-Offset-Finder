@@ -6,8 +6,8 @@ pub mod checker;
 pub mod report;
 pub mod confidence;
 
-pub use validator::{OffsetValidator, ValidationResult};
-pub use rules::{ValidationRule, ValidationRuleSet};
-pub use checker::{OffsetChecker, CheckResult};
-pub use report::ValidationReport;
-pub use confidence::{ConfidenceScore, ConfidenceCalculator};
+pub use validator::OffsetValidator;
+pub use rules::ValidationRule;
+pub use checker::ValidationChecker;
+pub use report::{ValidationReport, ValidationIssue, IssueSeverity};
+pub use confidence::ConfidenceScorer;

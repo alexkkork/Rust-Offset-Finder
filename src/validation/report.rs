@@ -1,285 +1,119 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::validation::validator::{ValidationResult, ValidationIssue, IssueSeverity};
 use std::collections::HashMap;
-use std::fmt;
 
+#[derive(Debug, Clone)]
 pub struct ValidationReport {
-    function_results: HashMap<String, ValidationResult>,
-    structure_results: HashMap<String, HashMap<String, ValidationResult>>,
-    class_results: HashMap<String, ValidationResult>,
-    constant_results: HashMap<String, ValidationResult>,
-    summary: Option<ValidationSummary>,
+    pub issues: Vec<ValidationIssue>,
+    pub overall_score: f64,
+    pub category_scores: HashMap<String, f64>,
+    pub summary: ValidationSummary,
 }
 
 impl ValidationReport {
     pub fn new() -> Self {
         Self {
-            function_results: HashMap::new(),
-            structure_results: HashMap::new(),
-            class_results: HashMap::new(),
-            constant_results: HashMap::new(),
-            summary: None,
+            issues: Vec::new(),
+            overall_score: 100.0,
+            category_scores: HashMap::new(),
+            summary: ValidationSummary::new(),
         }
     }
 
-    pub fn add_function_result(&mut self, name: String, result: ValidationResult) {
-        self.function_results.insert(name, result);
+    pub fn add_issue(&mut self, issue: ValidationIssue) {
+        self.summary.add_issue(&issue);
+        self.issues.push(issue);
     }
 
-    pub fn add_structure_result(&mut self, struct_name: String, field_name: String, result: ValidationResult) {
-        self.structure_results
-            .entry(struct_name)
-            .or_default()
-            .insert(field_name, result);
+    pub fn add_issues(&mut self, issues: Vec<ValidationIssue>) {
+        for issue in issues {
+            self.add_issue(issue);
+        }
     }
 
-    pub fn add_class_result(&mut self, name: String, result: ValidationResult) {
-        self.class_results.insert(name, result);
-    }
+    pub fn calculate_overall_score(&mut self) {
+        let mut score = 100.0;
 
-    pub fn add_constant_result(&mut self, name: String, result: ValidationResult) {
-        self.constant_results.insert(name, result);
-    }
-
-    pub fn calculate_summary(&mut self) {
-        let mut total = 0;
-        let mut passed = 0;
-        let mut failed = 0;
-        let mut warnings = 0;
-        let mut total_confidence = 0.0;
-
-        for result in self.function_results.values() {
-            total += 1;
-            total_confidence += result.confidence;
-            if result.valid {
-                passed += 1;
-            } else {
-                failed += 1;
-            }
-            if result.has_issues() && result.valid {
-                warnings += 1;
+        for issue in &self.issues {
+            match issue.severity {
+                IssueSeverity::Error => score -= 10.0,
+                IssueSeverity::Warning => score -= 5.0,
+                IssueSeverity::Info => score -= 1.0,
             }
         }
 
-        for fields in self.structure_results.values() {
-            for result in fields.values() {
-                total += 1;
-                total_confidence += result.confidence;
-                if result.valid {
-                    passed += 1;
-                } else {
-                    failed += 1;
-                }
-                if result.has_issues() && result.valid {
-                    warnings += 1;
-                }
-            }
-        }
-
-        for result in self.class_results.values() {
-            total += 1;
-            total_confidence += result.confidence;
-            if result.valid {
-                passed += 1;
-            } else {
-                failed += 1;
-            }
-            if result.has_issues() && result.valid {
-                warnings += 1;
-            }
-        }
-
-        for result in self.constant_results.values() {
-            total += 1;
-            total_confidence += result.confidence;
-            if result.valid {
-                passed += 1;
-            } else {
-                failed += 1;
-            }
-            if result.has_issues() && result.valid {
-                warnings += 1;
-            }
-        }
-
-        let average_confidence = if total > 0 {
-            total_confidence / total as f64
-        } else {
-            0.0
-        };
-
-        self.summary = Some(ValidationSummary {
-            total_validations: total,
-            passed,
-            failed,
-            warnings,
-            average_confidence,
-            issues_by_severity: self.count_issues_by_severity(),
-        });
+        self.overall_score = score.max(0.0);
     }
 
-    fn count_issues_by_severity(&self) -> HashMap<IssueSeverity, usize> {
-        let mut counts: HashMap<IssueSeverity, usize> = HashMap::new();
-
-        let all_results: Vec<&ValidationResult> = self.function_results.values()
-            .chain(self.class_results.values())
-            .chain(self.constant_results.values())
-            .chain(self.structure_results.values().flat_map(|m| m.values()))
-            .collect();
-
-        for result in all_results {
-            for issue in &result.issues {
-                *counts.entry(issue.severity()).or_insert(0) += 1;
-            }
-        }
-
-        counts
+    pub fn errors(&self) -> impl Iterator<Item = &ValidationIssue> {
+        self.issues.iter().filter(|i| i.severity == IssueSeverity::Error)
     }
 
-    pub fn summary(&self) -> Option<&ValidationSummary> {
-        self.summary.as_ref()
+    pub fn warnings(&self) -> impl Iterator<Item = &ValidationIssue> {
+        self.issues.iter().filter(|i| i.severity == IssueSeverity::Warning)
     }
 
-    pub fn is_all_valid(&self) -> bool {
-        self.summary.as_ref().map(|s| s.failed == 0).unwrap_or(false)
+    pub fn infos(&self) -> impl Iterator<Item = &ValidationIssue> {
+        self.issues.iter().filter(|i| i.severity == IssueSeverity::Info)
     }
 
-    pub fn pass_rate(&self) -> f64 {
-        self.summary.as_ref()
-            .map(|s| {
-                if s.total_validations > 0 {
-                    s.passed as f64 / s.total_validations as f64
-                } else {
-                    0.0
-                }
-            })
-            .unwrap_or(0.0)
+    pub fn is_valid(&self) -> bool {
+        self.summary.error_count == 0
     }
 
-    pub fn get_function_result(&self, name: &str) -> Option<&ValidationResult> {
-        self.function_results.get(name)
+    pub fn has_issues(&self) -> bool {
+        !self.issues.is_empty()
     }
 
-    pub fn get_structure_result(&self, struct_name: &str, field_name: &str) -> Option<&ValidationResult> {
-        self.structure_results
-            .get(struct_name)
-            .and_then(|fields| fields.get(field_name))
-    }
+    pub fn format_report(&self) -> String {
+        let mut output = String::new();
 
-    pub fn get_class_result(&self, name: &str) -> Option<&ValidationResult> {
-        self.class_results.get(name)
-    }
+        output.push_str(&format!("=== Validation Report ===\n"));
+        output.push_str(&format!("Overall Score: {:.1}%\n", self.overall_score));
+        output.push_str(&format!("\nSummary:\n"));
+        output.push_str(&format!("  Errors: {}\n", self.summary.error_count));
+        output.push_str(&format!("  Warnings: {}\n", self.summary.warning_count));
+        output.push_str(&format!("  Info: {}\n", self.summary.info_count));
 
-    pub fn get_constant_result(&self, name: &str) -> Option<&ValidationResult> {
-        self.constant_results.get(name)
-    }
+        if !self.issues.is_empty() {
+            output.push_str(&format!("\nIssues:\n"));
 
-    pub fn failed_functions(&self) -> Vec<(&String, &ValidationResult)> {
-        self.function_results.iter()
-            .filter(|(_, r)| !r.valid)
-            .collect()
-    }
-
-    pub fn failed_structures(&self) -> Vec<(&String, &String, &ValidationResult)> {
-        self.structure_results.iter()
-            .flat_map(|(struct_name, fields)| {
-                fields.iter()
-                    .filter(|(_, r)| !r.valid)
-                    .map(move |(field_name, r)| (struct_name, field_name, r))
-            })
-            .collect()
-    }
-
-    pub fn critical_issues(&self) -> Vec<(String, &ValidationIssue)> {
-        let mut critical = Vec::new();
-
-        for (name, result) in &self.function_results {
-            for issue in &result.issues {
-                if issue.severity() == IssueSeverity::Critical {
-                    critical.push((format!("Function: {}", name), issue));
-                }
-            }
-        }
-
-        for (struct_name, fields) in &self.structure_results {
-            for (field_name, result) in fields {
-                for issue in &result.issues {
-                    if issue.severity() == IssueSeverity::Critical {
-                        critical.push((format!("Structure: {}.{}", struct_name, field_name), issue));
+            let errors: Vec<_> = self.errors().collect();
+            if !errors.is_empty() {
+                output.push_str("  [ERRORS]\n");
+                for issue in errors {
+                    output.push_str(&format!("    - [{}] {}: {}\n", 
+                        issue.category, issue.item_name, issue.message));
+                    if let Some(suggestion) = &issue.suggestion {
+                        output.push_str(&format!("      Suggestion: {}\n", suggestion));
                     }
                 }
             }
-        }
 
-        for (name, result) in &self.class_results {
-            for issue in &result.issues {
-                if issue.severity() == IssueSeverity::Critical {
-                    critical.push((format!("Class: {}", name), issue));
+            let warnings: Vec<_> = self.warnings().collect();
+            if !warnings.is_empty() {
+                output.push_str("  [WARNINGS]\n");
+                for issue in warnings {
+                    output.push_str(&format!("    - [{}] {}: {}\n",
+                        issue.category, issue.item_name, issue.message));
+                }
+            }
+
+            let infos: Vec<_> = self.infos().collect();
+            if !infos.is_empty() {
+                output.push_str("  [INFO]\n");
+                for issue in infos {
+                    output.push_str(&format!("    - [{}] {}: {}\n",
+                        issue.category, issue.item_name, issue.message));
                 }
             }
         }
 
-        for (name, result) in &self.constant_results {
-            for issue in &result.issues {
-                if issue.severity() == IssueSeverity::Critical {
-                    critical.push((format!("Constant: {}", name), issue));
-                }
-            }
-        }
-
-        critical
+        output
     }
 
-    pub fn to_text_report(&self) -> String {
-        let mut report = String::new();
-
-        report.push_str("=== Validation Report ===\n\n");
-
-        if let Some(summary) = &self.summary {
-            report.push_str(&format!("Summary:\n"));
-            report.push_str(&format!("  Total Validations: {}\n", summary.total_validations));
-            report.push_str(&format!("  Passed: {}\n", summary.passed));
-            report.push_str(&format!("  Failed: {}\n", summary.failed));
-            report.push_str(&format!("  Warnings: {}\n", summary.warnings));
-            report.push_str(&format!("  Average Confidence: {:.2}%\n", summary.average_confidence * 100.0));
-            report.push_str("\n");
-        }
-
-        if !self.function_results.is_empty() {
-            report.push_str("Function Validations:\n");
-            for (name, result) in &self.function_results {
-                let status = if result.valid { "PASS" } else { "FAIL" };
-                report.push_str(&format!("  {} [{}] confidence={:.2}%\n",
-                    name, status, result.confidence * 100.0));
-
-                for issue in &result.issues {
-                    report.push_str(&format!("    - {:?}: {}\n",
-                        issue.severity(), issue.description()));
-                }
-            }
-            report.push_str("\n");
-        }
-
-        if !self.structure_results.is_empty() {
-            report.push_str("Structure Validations:\n");
-            for (struct_name, fields) in &self.structure_results {
-                report.push_str(&format!("  {}:\n", struct_name));
-                for (field_name, result) in fields {
-                    let status = if result.valid { "PASS" } else { "FAIL" };
-                    report.push_str(&format!("    {} [{}] confidence={:.2}%\n",
-                        field_name, status, result.confidence * 100.0));
-
-                    for issue in &result.issues {
-                        report.push_str(&format!("      - {:?}: {}\n",
-                            issue.severity(), issue.description()));
-                    }
-                }
-            }
-            report.push_str("\n");
-        }
-
-        report
+    pub fn to_json(&self) -> String {
+        serde_json::to_string_pretty(self).unwrap_or_else(|_| "{}".to_string())
     }
 }
 
@@ -289,90 +123,122 @@ impl Default for ValidationReport {
     }
 }
 
-impl fmt::Display for ValidationReport {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_text_report())
+impl serde::Serialize for ValidationReport {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("ValidationReport", 4)?;
+        state.serialize_field("overall_score", &self.overall_score)?;
+        state.serialize_field("error_count", &self.summary.error_count)?;
+        state.serialize_field("warning_count", &self.summary.warning_count)?;
+        state.serialize_field("info_count", &self.summary.info_count)?;
+        state.end()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ValidationSummary {
-    pub total_validations: usize,
-    pub passed: usize,
-    pub failed: usize,
-    pub warnings: usize,
-    pub average_confidence: f64,
-    pub issues_by_severity: HashMap<IssueSeverity, usize>,
+pub struct ValidationIssue {
+    pub category: String,
+    pub item_name: String,
+    pub message: String,
+    pub severity: IssueSeverity,
+    pub suggestion: Option<String>,
 }
 
-impl ValidationSummary {
-    pub fn success_rate(&self) -> f64 {
-        if self.total_validations > 0 {
-            self.passed as f64 / self.total_validations as f64
-        } else {
-            0.0
-        }
-    }
-
-    pub fn critical_issues(&self) -> usize {
-        *self.issues_by_severity.get(&IssueSeverity::Critical).unwrap_or(&0)
-    }
-
-    pub fn error_issues(&self) -> usize {
-        *self.issues_by_severity.get(&IssueSeverity::Error).unwrap_or(&0)
-    }
-
-    pub fn warning_issues(&self) -> usize {
-        *self.issues_by_severity.get(&IssueSeverity::Warning).unwrap_or(&0)
-    }
-
-    pub fn info_issues(&self) -> usize {
-        *self.issues_by_severity.get(&IssueSeverity::Info).unwrap_or(&0)
-    }
-}
-
-pub struct DetailedReport {
-    pub report: ValidationReport,
-    pub timestamp: String,
-    pub version: String,
-    pub target_info: TargetInfo,
-}
-
-#[derive(Debug, Clone)]
-pub struct TargetInfo {
-    pub binary_path: Option<String>,
-    pub process_name: Option<String>,
-    pub architecture: String,
-    pub os: String,
-}
-
-impl DetailedReport {
-    pub fn new(report: ValidationReport) -> Self {
+impl ValidationIssue {
+    pub fn error(category: &str, item: &str, message: &str) -> Self {
         Self {
-            report,
-            timestamp: chrono_lite_timestamp(),
-            version: env!("CARGO_PKG_VERSION").to_string(),
-            target_info: TargetInfo {
-                binary_path: None,
-                process_name: None,
-                architecture: "arm64".to_string(),
-                os: "macOS".to_string(),
-            },
+            category: category.to_string(),
+            item_name: item.to_string(),
+            message: message.to_string(),
+            severity: IssueSeverity::Error,
+            suggestion: None,
         }
     }
 
-    pub fn with_target(mut self, target: TargetInfo) -> Self {
-        self.target_info = target;
+    pub fn warning(category: &str, item: &str, message: &str) -> Self {
+        Self {
+            category: category.to_string(),
+            item_name: item.to_string(),
+            message: message.to_string(),
+            severity: IssueSeverity::Warning,
+            suggestion: None,
+        }
+    }
+
+    pub fn info(category: &str, item: &str, message: &str) -> Self {
+        Self {
+            category: category.to_string(),
+            item_name: item.to_string(),
+            message: message.to_string(),
+            severity: IssueSeverity::Info,
+            suggestion: None,
+        }
+    }
+
+    pub fn with_suggestion(mut self, suggestion: &str) -> Self {
+        self.suggestion = Some(suggestion.to_string());
         self
     }
 }
 
-fn chrono_lite_timestamp() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IssueSeverity {
+    Error,
+    Warning,
+    Info,
+}
 
-    let duration = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default();
+impl IssueSeverity {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IssueSeverity::Error => "ERROR",
+            IssueSeverity::Warning => "WARNING",
+            IssueSeverity::Info => "INFO",
+        }
+    }
 
-    format!("{}", duration.as_secs())
+    pub fn color_code(&self) -> &'static str {
+        match self {
+            IssueSeverity::Error => "\x1b[31m",
+            IssueSeverity::Warning => "\x1b[33m",
+            IssueSeverity::Info => "\x1b[34m",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ValidationSummary {
+    pub error_count: usize,
+    pub warning_count: usize,
+    pub info_count: usize,
+    pub categories_affected: Vec<String>,
+}
+
+impl ValidationSummary {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_issue(&mut self, issue: &ValidationIssue) {
+        match issue.severity {
+            IssueSeverity::Error => self.error_count += 1,
+            IssueSeverity::Warning => self.warning_count += 1,
+            IssueSeverity::Info => self.info_count += 1,
+        }
+
+        if !self.categories_affected.contains(&issue.category) {
+            self.categories_affected.push(issue.category.clone());
+        }
+    }
+
+    pub fn total_issues(&self) -> usize {
+        self.error_count + self.warning_count + self.info_count
+    }
+
+    pub fn is_clean(&self) -> bool {
+        self.total_issues() == 0
+    }
 }

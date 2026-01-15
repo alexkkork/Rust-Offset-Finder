@@ -11,7 +11,7 @@ pub mod tvalue;
 pub mod gc_object;
 
 pub use lua_state::LuaStateFinder;
-pub use extraspace::ExtraspaceFinder;
+pub use extraspace::ExtraSpaceFinder;
 pub use closure::ClosureFinder;
 pub use proto::ProtoFinder;
 
@@ -25,8 +25,8 @@ pub fn find_all_structures(reader: Arc<dyn MemoryReader>, start: Address, end: A
     let lua_state_finder = LuaStateFinder::new(reader.clone());
     results.extend(lua_state_finder.find_all(start, end));
 
-    let extraspace_finder = ExtraspaceFinder::new(reader.clone());
-    results.extend(extraspace_finder.find_all(start, end));
+    let extra_space_finder = ExtraSpaceFinder::new(reader.clone());
+    results.extend(extra_space_finder.find_all(start, end));
 
     let closure_finder = ClosureFinder::new(reader.clone());
     results.extend(closure_finder.find_all(start, end));

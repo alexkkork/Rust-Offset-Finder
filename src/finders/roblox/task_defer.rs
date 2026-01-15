@@ -42,7 +42,7 @@ impl TaskDeferFinder {
 
                         if self.validate_task_defer(addr) {
                             return Some(FinderResult {
-                                name: "taskDefer".to_string(),
+                                name: "task_defer".to_string(),
                                 address: addr,
                                 confidence: 0.86,
                                 method: "pattern".to_string(),
@@ -74,7 +74,7 @@ impl TaskDeferFinder {
 
                     if self.validate_task_defer(func_start) {
                         return Some(FinderResult {
-                            name: "taskDefer".to_string(),
+                            name: "task_defer".to_string(),
                             address: func_start,
                             confidence: 0.82,
                             method: "string_xref".to_string(),
@@ -99,7 +99,7 @@ impl TaskDeferFinder {
 
                     if self.validate_task_defer(func_start) {
                         return Some(FinderResult {
-                            name: "taskDefer".to_string(),
+                            name: "task_defer".to_string(),
                             address: func_start,
                             confidence: 0.65,
                             method: "heuristic".to_string(),

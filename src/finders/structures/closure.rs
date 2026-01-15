@@ -44,7 +44,7 @@ impl ClosureFinder {
         if let Some(offset) = self.find_isC_offset(start, end) {
             results.push(StructureOffsetResult::new(
                 "Closure".to_string(),
-                "isC".to_string(),
+                "is_c".to_string(),
                 offset,
             ).with_confidence(0.87).with_method("pattern"));
         }

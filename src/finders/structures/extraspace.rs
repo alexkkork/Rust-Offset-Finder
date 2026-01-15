@@ -5,11 +5,11 @@ use crate::pattern::Pattern;
 use crate::finders::result::StructureOffsetResult;
 use std::sync::Arc;
 
-pub struct ExtraspaceFinder {
+pub struct ExtraSpaceFinder {
     reader: Arc<dyn MemoryReader>,
 }
 
-impl ExtraspaceFinder {
+impl ExtraSpaceFinder {
     pub fn new(reader: Arc<dyn MemoryReader>) -> Self {
         Self { reader }
     }
@@ -19,7 +19,7 @@ impl ExtraspaceFinder {
 
         if let Some(offset) = self.find_identity_offset(start, end) {
             results.push(StructureOffsetResult::new(
-                "Extraspace".to_string(),
+                "ExtraSpace".to_string(),
                 "identity".to_string(),
                 offset,
             ).with_confidence(0.88).with_method("pattern"));
@@ -27,7 +27,7 @@ impl ExtraspaceFinder {
 
         if let Some(offset) = self.find_capabilities_offset(start, end) {
             results.push(StructureOffsetResult::new(
-                "Extraspace".to_string(),
+                "ExtraSpace".to_string(),
                 "capabilities".to_string(),
                 offset,
             ).with_confidence(0.86).with_method("pattern"));
@@ -35,16 +35,16 @@ impl ExtraspaceFinder {
 
         if let Some(offset) = self.find_script_context_offset(start, end) {
             results.push(StructureOffsetResult::new(
-                "Extraspace".to_string(),
-                "scriptContext".to_string(),
+                "ExtraSpace".to_string(),
+                "script_context".to_string(),
                 offset,
             ).with_confidence(0.85).with_method("xref"));
         }
 
         if let Some(offset) = self.find_shared_extra_offset(start, end) {
             results.push(StructureOffsetResult::new(
-                "Extraspace".to_string(),
-                "sharedExtra".to_string(),
+                "ExtraSpace".to_string(),
+                "shared_extra".to_string(),
                 offset,
             ).with_confidence(0.82).with_method("heuristic"));
         }

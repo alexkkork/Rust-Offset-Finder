@@ -1,14 +1,16 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::Address;
-use crate::analysis::Instruction;
+use crate::analysis::disassembler::DisassembledInstruction;
 use std::fmt;
+
+pub type Instruction = DisassembledInstruction;
 
 #[derive(Debug, Clone)]
 pub struct BasicBlock {
     start: Address,
     end: Address,
-    instructions: Vec<Instruction>,
+    instructions: Vec<DisassembledInstruction>,
     predecessors: Vec<Address>,
     successors: Vec<Address>,
     is_entry: bool,
@@ -18,7 +20,7 @@ pub struct BasicBlock {
 }
 
 impl BasicBlock {
-    pub fn new(start: Address, end: Address, instructions: Vec<Instruction>) -> Self {
+    pub fn new(start: Address, end: Address, instructions: Vec<DisassembledInstruction>) -> Self {
         Self {
             start,
             end,
@@ -48,7 +50,7 @@ impl BasicBlock {
         &self.instructions
     }
 
-    pub fn instructions_mut(&mut self) -> &mut Vec<Instruction> {
+    pub fn instructions_mut(&mut self) -> &mut Vec<DisassembledInstruction> {
         &mut self.instructions
     }
 

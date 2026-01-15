@@ -270,3 +270,5 @@ pub fn find_lua_call(reader: Arc<dyn MemoryReader>, start: Address, end: Address
     let finder = LuaCallFinder::new(reader);
     finder.find_lua_call(start, end)
 }
+
+pub type LuaApiCallAnalyzer = LuaCallFinder;

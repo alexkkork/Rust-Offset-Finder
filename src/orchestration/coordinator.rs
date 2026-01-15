@@ -12,7 +12,7 @@ use crate::orchestration::aggregator::ResultAggregator;
 use crate::orchestration::finalizer::OutputFinalizer;
 use crate::finders::result::FinderResults;
 use crate::output::manager::OutputManager;
-use crate::ui::progress::ProgressBarManager;
+use crate::ui::progress::ProgressManager;
 use std::sync::Arc;
 use parking_lot::RwLock;
 use anyhow::Result;

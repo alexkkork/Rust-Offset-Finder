@@ -12,8 +12,8 @@ pub mod api;
 
 pub use bytecode::LuauBytecode;
 pub use opcode::LuauOpcode;
-pub use vm::LuauVm;
-pub use state::LuauState;
+pub use vm::VmAnalyzer;
+pub use state::StateAnalyzer;
 pub use types::{LuauType, TypeTag, TValue};
 pub use gc::GcAnalyzer;
 pub use debug::DebugInfoAnalyzer;
