@@ -1,7 +1,7 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryReader, MemoryError};
-use crate::analysis::disassembler::{Disassembler, DisassembledInstruction};
+use crate::analysis::disassembler::Disassembler;
 use crate::analysis::function::AnalyzedFunction;
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -101,17 +101,17 @@ impl SignatureAnalyzer {
         let regions = self.reader.get_regions()?;
 
         for region in &regions {
-            if !region.protection.is_executable() {
+            if !region.protection().is_executable() {
                 continue;
             }
 
-            let data = self.reader.read_bytes(region.range.start, region.range.size() as usize)?;
+            let data = self.reader.read_bytes(region.range().start(), region.range().size() as usize)?;
 
             for offset in 0..data.len().saturating_sub(sig.pattern.len() - 1) {
                 let window = &data[offset..offset + sig.pattern.len()];
 
                 if self.patterns_match(&sig.pattern, &sig.mask, window, &vec![0xFF; window.len()]) {
-                    results.push(Address::new(region.range.start.as_u64() + offset as u64));
+                    results.push(Address::new(region.range().start().as_u64() + offset as u64));
                 }
             }
         }

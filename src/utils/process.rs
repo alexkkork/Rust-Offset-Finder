@@ -1,7 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use std::ffi::CString;
-use libc::{pid_t, c_char, c_int, c_void};
+use libc::{pid_t, c_int, c_void};
 
 pub struct ProcessUtils;
 

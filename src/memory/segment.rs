@@ -1,6 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::{Address, MemoryError, MemoryRange, Protection};
+use crate::memory::{Address, MemoryRange, Protection};
 use std::fmt;
 
 #[derive(Debug, Clone)]

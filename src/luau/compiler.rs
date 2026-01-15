@@ -2,7 +2,6 @@
 
 use crate::memory::{Address, MemoryReader, MemoryError};
 use std::sync::Arc;
-use std::collections::HashMap;
 
 pub struct CompilerInfo {
     pub compile_function: Option<Address>,
@@ -141,11 +140,11 @@ impl CompilerAnalyzer {
         let regions = self.reader.get_regions()?;
 
         for region in &regions {
-            if !region.protection.is_executable() {
+            if !region.protection().is_executable() {
                 continue;
             }
 
-            let data = self.reader.read_bytes(region.range.start, region.range.size() as usize)?;
+            let data = self.reader.read_bytes(region.range().start(), region.range().size() as usize)?;
 
             for offset in (0..data.len().saturating_sub(16)).step_by(4) {
                 let word = u32::from_le_bytes([
@@ -154,7 +153,7 @@ impl CompilerAnalyzer {
 
                 let is_prologue = (word & 0xFFC07FFF) == 0xA9007BFD;
                 if is_prologue {
-                    let addr = Address::new(region.range.start.as_u64() + offset as u64);
+                    let addr = Address::new(region.range().start().as_u64() + offset as u64);
                     if self.validate_compile_function(addr).unwrap_or(false) {
                         return Ok(Some(addr));
                     }

@@ -113,7 +113,7 @@ impl PropertyAccessor {
 
     pub fn infer_property_type(&self, getter: &GetterInfo, setter: Option<&SetterInfo>) -> PropertyType {
         match getter.return_type {
-            ReturnType::Int32 => PropertyType::Integer,
+            ReturnType::Int32 | ReturnType::Int64 => PropertyType::Integer,
             ReturnType::Float32 | ReturnType::Float64 => PropertyType::Number,
             ReturnType::Pointer => {
                 if let Some(set) = setter {
@@ -126,6 +126,7 @@ impl PropertyAccessor {
                     PropertyType::Unknown
                 }
             }
+            ReturnType::Void => PropertyType::Unknown,
             ReturnType::Unknown => PropertyType::Unknown,
         }
     }

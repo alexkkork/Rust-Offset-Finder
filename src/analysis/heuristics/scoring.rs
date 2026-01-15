@@ -1,6 +1,5 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::Address;
 use crate::analysis::heuristics::engine::HeuristicMatch;
 use std::collections::HashMap;
 
@@ -119,7 +118,7 @@ impl HeuristicScorer {
             .collect()
     }
 
-    pub fn filter_by_threshold(&self, matches: &[HeuristicMatch], threshold: f64) -> Vec<&HeuristicMatch> {
+    pub fn filter_by_threshold<'a>(&self, matches: &'a [HeuristicMatch], threshold: f64) -> Vec<&'a HeuristicMatch> {
         matches.iter()
             .filter(|m| self.score_match(m) >= threshold)
             .collect()

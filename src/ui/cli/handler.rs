@@ -23,7 +23,7 @@ impl CommandHandler {
 
     pub fn execute(&self, args: Args) -> anyhow::Result<()> {
         if !args.quiet {
-            Banner::print();
+            Banner::print_default();
         }
 
         self.setup_logging(&args)?;

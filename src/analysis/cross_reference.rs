@@ -25,19 +25,21 @@ impl CrossReferenceAnalyzer {
     }
 
     pub fn analyze_region(&mut self, region: &MemoryRegion) -> Result<usize, MemoryError> {
-        if !region.protection.is_executable() {
+        if !region.protection().is_executable() {
             return Ok(0);
         }
 
-        let instructions = self.disassembler.disassemble_region(region)?;
+        let start = region.range().start();
+        let end = region.range().end();
+        let instructions = self.disassembler.disassemble_range(start, end)?;
         let mut ref_count = 0;
 
         for instr in &instructions {
             if instr.is_call() || instr.is_branch() {
                 if let Some(target) = instr.branch_target() {
-                    self.add_code_ref(target, CodeReference {
+                    self.add_code_ref(target.as_u64(), CodeReference {
                         from: instr.address,
-                        to: Address::new(target),
+                        to: target,
                         ref_type: if instr.is_call() { CodeRefType::Call } else { CodeRefType::Branch },
                     });
                     ref_count += 1;
@@ -80,7 +82,7 @@ impl CrossReferenceAnalyzer {
             let count = self.analyze_region(region)?;
             stats.total_refs += count;
 
-            if region.protection.is_executable() {
+            if region.protection().is_executable() {
                 stats.code_regions_analyzed += 1;
             }
         }
@@ -120,7 +122,7 @@ impl CrossReferenceAnalyzer {
 
         let callees: Vec<Address> = instructions.iter()
             .filter(|i| i.is_call())
-            .filter_map(|i| i.branch_target().map(Address::new))
+            .filter_map(|i| i.branch_target())
             .collect();
 
         Ok(callees)
@@ -240,11 +242,13 @@ impl CrossReferenceAnalyzer {
         let regions = self.reader.get_regions()?;
 
         for region in &regions {
-            if !region.protection.is_executable() {
+            if !region.protection().is_executable() {
                 continue;
             }
 
-            let instructions = self.disassembler.disassemble_region(region)?;
+            let start = region.range().start();
+            let end = region.range().end();
+            let instructions = self.disassembler.disassemble_range(start, end)?;
 
             for instr in &instructions {
                 if instr.mnemonic == "ADRP" {

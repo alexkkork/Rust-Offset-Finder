@@ -42,7 +42,7 @@ impl Analyzer {
             reader: reader.clone(),
             disassembler: disassembler.clone(),
             function_analyzer: FunctionAnalyzer::new(reader.clone(), disassembler.clone()),
-            heuristic_analyzer: HeuristicAnalyzer::new(reader.clone(), disassembler.clone()),
+            heuristic_analyzer: HeuristicAnalyzer::new(reader.clone()),
             string_analyzer: StringAnalyzer::new(reader.clone()),
             pattern_recognizer: PatternRecognizer::new(),
         }
@@ -61,7 +61,7 @@ impl Analyzer {
         let mut all_strings = Vec::new();
 
         for region in &regions {
-            if region.protection.is_readable() {
+            if region.protection().is_readable() {
                 let strings = self.string_analyzer.find_strings_in_region(region)?;
                 all_strings.extend(strings);
             }

@@ -27,24 +27,29 @@ impl ResultCollector {
     }
 
     pub fn collect(&self, result: FinderResult, source: &str, confidence: f64) {
-        match result {
-            FinderResult::Function(name, addr) => {
-                self.collect_function(name, addr, source, confidence);
+        match result.category.as_str() {
+            "function" | "lua_api" => {
+                self.collect_function(result.name, result.address, source, result.confidence);
             }
-            FinderResult::StructureOffset(struct_name, field, offset) => {
-                self.collect_structure_offset(struct_name, field, offset, source, confidence);
+            "structure_offset" => {
+                // Structure offsets need to be handled differently
+                // This would need the structure name and field name from somewhere else
             }
-            FinderResult::Class(name, addr) => {
-                self.collect_class(name, addr, source, confidence);
+            "class" => {
+                self.collect_class(result.name, result.address, source, result.confidence);
             }
-            FinderResult::Property(class, prop, offset) => {
-                self.collect_property(class, prop, offset, source, confidence);
+            "property" => {
+                // Properties need class name and offset from somewhere else
             }
-            FinderResult::Method(class, method, addr) => {
-                self.collect_method(class, method, addr, source, confidence);
+            "method" => {
+                // Methods need class name from somewhere else
             }
-            FinderResult::Constant(name, value) => {
-                self.collect_constant(name, value, source, confidence);
+            "constant" => {
+                // Constants need value from somewhere else
+            }
+            _ => {
+                // Default to function
+                self.collect_function(result.name, result.address, source, result.confidence);
             }
         }
     }

@@ -2,7 +2,7 @@
 
 use crate::luau::bytecode::OpcodeFormat;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum LuauOpcode {
     Nop = 0,

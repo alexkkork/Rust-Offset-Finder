@@ -1,10 +1,8 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::output::{OffsetOutput, FunctionOffset, StructureOffsets, ClassOffset, PropertyOffset, MethodOffset, ConstantOffset, ConstantValue, FieldOffset};
+use crate::output::{OffsetOutput, FunctionOffset, StructureOffsets, ClassOffset, PropertyOffset, MethodOffset, ConstantOffset, ConstantValue};
 use crate::output::json::JsonSerializer;
 use crate::output::report::{ReportGenerator, ReportFormat};
-use crate::memory::Address;
-use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;

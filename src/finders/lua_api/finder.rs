@@ -19,8 +19,8 @@ pub struct LuaApiFinder {
 impl LuaApiFinder {
     pub fn new(reader: Arc<dyn MemoryReader>) -> Self {
         Self {
-            reader,
-            pattern_matcher: PatternMatcher::new(),
+            reader: reader.clone(),
+            pattern_matcher: PatternMatcher::new(reader),
             symbol_resolver: None,
             xref_analyzer: None,
             found_functions: HashMap::new(),
@@ -197,23 +197,25 @@ impl LuaApiFinder {
         for pattern_str in patterns {
             let pattern = Pattern::from_hex(pattern_str);
 
-            if let Some(addr) = self.pattern_matcher.find_pattern_in_range(
-                self.reader.as_ref(),
-                &pattern,
+            let pattern_bytes = pattern.bytes();
+            if let Ok(addrs) = self.pattern_matcher.find_pattern_in_range(
+                pattern_bytes,
                 start,
                 end,
             ) {
-                let func_start = self.find_function_start(addr);
+                if let Some(addr) = addrs.first().copied() {
+                    let func_start = self.find_function_start(addr);
 
-                if self.validate_lua_function(name, func_start) {
-                    return Some(FinderResult {
-                        name: name.to_string(),
-                        address: func_start,
-                        confidence: 0.85,
-                        method: "pattern".to_string(),
-                        category: "lua_api".to_string(),
-                        signature: self.get_signature(name),
-                    });
+                    if self.validate_lua_function(name, func_start) {
+                        return Some(FinderResult {
+                            name: name.to_string(),
+                            address: func_start,
+                            confidence: 0.85,
+                            method: "pattern".to_string(),
+                            category: "lua_api".to_string(),
+                            signature: self.get_signature(name),
+                        });
+                    }
                 }
             }
         }
@@ -232,7 +234,7 @@ impl LuaApiFinder {
                 let callers = analyzer.get_references_to(gettop.address);
 
                 for caller in callers.iter().take(50) {
-                    let func_start = self.find_function_start(*caller);
+                    let func_start = self.find_function_start(caller.from());
 
                     if self.validate_lua_function(name, func_start) {
                         return Some(FinderResult {
@@ -338,7 +340,7 @@ impl LuaApiFinder {
                     if i != j && other.confidence >= 0.9 {
                         if let Some(analyzer) = &self.xref_analyzer {
                             let refs = analyzer.get_references_to(result.address);
-                            if refs.iter().any(|r| self.find_function_start(*r) == other.address) {
+                            if refs.iter().any(|r| self.find_function_start(r.from()) == other.address) {
                                 cross_refs += 1;
                             }
                         }

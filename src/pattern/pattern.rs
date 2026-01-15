@@ -270,3 +270,20 @@ impl Default for PatternBuilder {
         Self::new()
     }
 }
+
+impl Pattern {
+    /// Create a pattern with a byte mask (0xFF = fixed, 0x00 = wildcard)
+    pub fn with_mask(bytes: &[u8], byte_mask: &[u8]) -> Self {
+        let mask: Vec<bool> = byte_mask.iter().map(|&m| m == 0xFF).collect();
+        Self {
+            bytes: bytes.to_vec(),
+            mask,
+            name: None,
+        }
+    }
+
+    /// Get the mask as bytes (0xFF for fixed, 0x00 for wildcard)
+    pub fn mask_as_bytes(&self) -> Vec<u8> {
+        self.mask.iter().map(|&m| if m { 0xFF } else { 0x00 }).collect()
+    }
+}

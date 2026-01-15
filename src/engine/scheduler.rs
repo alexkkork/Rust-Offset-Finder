@@ -2,11 +2,10 @@
 
 use crate::engine::task::{Task, TaskPriority};
 use crate::engine::result::TaskResult;
-use crate::engine::worker::Worker;
+use crate::engine::worker::{Worker, PrioritizedTask};
 use std::collections::BinaryHeap;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use parking_lot::RwLock;
 
 pub struct TaskScheduler {
@@ -18,30 +17,6 @@ pub struct TaskScheduler {
     running: Arc<RwLock<bool>>,
 }
 
-struct PrioritizedTask {
-    task: Task,
-    priority: i32,
-}
-
-impl PartialEq for PrioritizedTask {
-    fn eq(&self, other: &Self) -> bool {
-        self.priority == other.priority
-    }
-}
-
-impl Eq for PrioritizedTask {}
-
-impl PartialOrd for PrioritizedTask {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for PrioritizedTask {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.priority.cmp(&other.priority)
-    }
-}
 
 impl TaskScheduler {
     pub fn new(thread_count: usize) -> Self {

@@ -2,14 +2,21 @@
 
 use crate::memory::{Address, MemoryError, MemoryReader, MemoryRegion, MemoryRange, Protection};
 use std::ffi::CString;
-use libc::{pid_t, c_void, size_t, c_int, c_uint, c_char};
+use libc::{pid_t, c_void, c_int, c_uint};
 
+#[allow(non_camel_case_types)]
 type mach_port_t = c_uint;
+#[allow(non_camel_case_types)]
 type kern_return_t = c_int;
+#[allow(non_camel_case_types)]
 type vm_address_t = u64;
+#[allow(non_camel_case_types)]
 type vm_size_t = u64;
+#[allow(non_camel_case_types)]
 type vm_prot_t = c_int;
+#[allow(non_camel_case_types)]
 type vm_region_flavor_t = c_int;
+#[allow(non_camel_case_types)]
 type vm_region_info_t = *mut c_int;
 
 const KERN_SUCCESS: kern_return_t = 0;
@@ -368,6 +375,20 @@ impl MemoryReader for ProcessMemory {
         }
         String::from_utf8(bytes)
             .map_err(|e| MemoryError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
+    }
+
+    fn get_base_address(&self) -> Address {
+        let regions = self.enumerate_regions().unwrap_or_default();
+        for region in regions {
+            if region.protection().is_executable() {
+                return region.range().start();
+            }
+        }
+        Address::zero()
+    }
+
+    fn get_regions(&self) -> Result<Vec<MemoryRegion>, MemoryError> {
+        self.enumerate_regions()
     }
 }
 

@@ -1,9 +1,10 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
 use std::fmt;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Sub, Mul, Div, BitAnd};
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Address {
     value: u64,
 }
@@ -112,6 +113,13 @@ impl Div<u64> for Address {
     type Output = Self;
     fn div(self, rhs: u64) -> Self::Output {
         Self { value: self.value / rhs }
+    }
+}
+
+impl BitAnd<u64> for Address {
+    type Output = u64;
+    fn bitand(self, rhs: u64) -> u64 {
+        self.value & rhs
     }
 }
 

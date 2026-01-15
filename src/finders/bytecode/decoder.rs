@@ -3,7 +3,7 @@
 use crate::memory::{Address, MemoryReader};
 use std::sync::Arc;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LuauOpcode {
     Nop,
     Break,

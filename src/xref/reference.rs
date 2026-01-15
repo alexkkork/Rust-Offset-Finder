@@ -15,6 +15,7 @@ pub enum XRefKind {
     Jump,
     Data,
     String,
+    Unknown,
 }
 
 impl XRef {

@@ -28,7 +28,7 @@ pub struct DiscoveryCoordinator {
     collector: Arc<RwLock<ResultCollector>>,
     aggregator: Arc<ResultAggregator>,
     finalizer: Arc<OutputFinalizer>,
-    progress_manager: Arc<ProgressBarManager>,
+    progress_manager: Arc<ProgressManager>,
 }
 
 impl DiscoveryCoordinator {
@@ -38,14 +38,14 @@ impl DiscoveryCoordinator {
         binary_memory: Arc<BinaryMemory>,
         pattern_matcher: Arc<PatternMatcher>,
         xref_analyzer: Arc<XRefAnalyzer>,
-        progress_manager: Arc<ProgressBarManager>,
+        progress_manager: Arc<ProgressManager>,
     ) -> Self {
         let discovery_manager = Arc::new(RwLock::new(DiscoveryManager::new(
             pattern_matcher.clone(),
             xref_analyzer.clone(),
         )));
 
-        let scheduler = Arc::new(DiscoveryScheduler::new(config.thread_count as usize));
+        let scheduler = Arc::new(DiscoveryScheduler::new(config.max_threads));
         let collector = Arc::new(RwLock::new(ResultCollector::new()));
         let aggregator = Arc::new(ResultAggregator::new());
         let finalizer = Arc::new(OutputFinalizer::new());
@@ -67,8 +67,8 @@ impl DiscoveryCoordinator {
 
     pub fn run_discovery(&self) -> Result<OutputManager> {
         let main_progress = self.progress_manager.create_main_progress(
-            "Discovering offsets".to_string(),
             6,
+            "Discovering offsets",
         );
 
         main_progress.set_message("Phase 1: Pattern scanning");

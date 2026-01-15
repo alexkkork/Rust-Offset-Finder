@@ -1,6 +1,6 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
-use crate::memory::{Address, MemoryError};
+use crate::memory::{Address, MemoryError, MemoryRegion};
 
 pub trait MemoryReader: Send + Sync {
     fn read_bytes(&self, addr: Address, len: usize) -> Result<Vec<u8>, MemoryError>;
@@ -15,6 +15,8 @@ pub trait MemoryReader: Send + Sync {
     fn read_ptr(&self, addr: Address) -> Result<Address, MemoryError>;
     fn read_string(&self, addr: Address, max_len: usize) -> Result<String, MemoryError>;
     fn read_c_string(&self, addr: Address) -> Result<String, MemoryError>;
+    fn get_base_address(&self) -> Address;
+    fn get_regions(&self) -> Result<Vec<MemoryRegion>, MemoryError>;
 }
 
 pub trait MemoryWriter: Send + Sync {

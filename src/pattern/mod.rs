@@ -1,4 +1,4 @@
-// Tue Jan 13 2026 - Alex
+// Tue Jan 15 2026 - Alex
 
 pub mod pattern;
 pub mod matcher;
@@ -6,11 +6,15 @@ pub mod compiler;
 pub mod scanner;
 pub mod database;
 pub mod arm64;
+pub mod yara;
+pub mod optimization;
 
 pub use pattern::Pattern;
 pub use matcher::PatternMatcher;
 pub use scanner::PatternScanner;
 pub use database::PatternDatabase;
+pub use yara::{YaraRule, YaraString, YaraMatcher, YaraMatch, YaraRuleBuilder, YaraPattern, Condition};
+pub use optimization::{PatternOptimizer, OptimizedPattern, OptimizedPatternSet, PatternCache, PatternGenerator};
 
 use crate::memory::{Address, MemoryReader, MemoryRegion};
 

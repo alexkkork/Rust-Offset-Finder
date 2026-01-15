@@ -1,11 +1,11 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::{Address, MemoryReader, MemoryError, MemoryRegion};
+use crate::memory::{Address, MemoryReader, MemoryError};
 use crate::analysis::disassembler::{Disassembler, DisassembledInstruction};
-use crate::analysis::block::{BasicBlock, BlockDataFlow};
-use crate::analysis::cfg::ControlFlowGraph;
+use crate::analysis::block::BasicBlock;
+use crate::analysis::cfg::{ControlFlowGraph, CfgBlock};
 use std::sync::Arc;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 pub struct FunctionAnalyzer {
     reader: Arc<dyn MemoryReader>,
@@ -64,7 +64,7 @@ impl FunctionAnalyzer {
                 block_ends.insert(instr.address.as_u64());
 
                 if let Some(target) = instr.branch_target() {
-                    block_starts.insert(target);
+                    block_starts.insert(target.as_u64());
                 }
 
                 let next_addr = instr.address.as_u64() + instr.size as u64;
@@ -100,10 +100,8 @@ impl FunctionAnalyzer {
                 .collect();
 
             if !block_instructions.is_empty() {
-                let mut block = BasicBlock::new(current_block_idx, Address::new(start));
-                for instr in block_instructions {
-                    block.add_instruction(instr);
-                }
+                let end_addr = Address::new(end);
+                let mut block = BasicBlock::new(Address::new(start), end_addr, block_instructions);
                 blocks.push(block);
                 current_block_idx += 1;
             }
@@ -113,10 +111,18 @@ impl FunctionAnalyzer {
     }
 
     fn build_cfg(&self, blocks: &[BasicBlock]) -> ControlFlowGraph {
-        let mut cfg = ControlFlowGraph::new();
+        let entry = blocks.first().map(|b| b.start_address()).unwrap_or(Address::new(0));
+        let mut cfg = ControlFlowGraph::new(entry);
 
         for block in blocks {
-            cfg.add_block(block.clone());
+            let cfg_block = CfgBlock {
+                start: block.start_address(),
+                end: block.end(),
+                instructions: block.instructions().to_vec(),
+                predecessors: Vec::new(),
+                successors: Vec::new(),
+            };
+            cfg.add_block(cfg_block);
         }
 
         for block in blocks {
@@ -124,24 +130,24 @@ impl FunctionAnalyzer {
                 if last_instr.is_branch() {
                     if let Some(target) = last_instr.branch_target() {
                         if let Some(target_block) = blocks.iter()
-                            .find(|b| b.start_address().as_u64() == target)
+                            .find(|b| b.start_address() == target)
                         {
                             cfg.add_edge(block.id(), target_block.id());
                         }
                     }
 
                     if last_instr.is_conditional_branch() {
-                        let fall_through = last_instr.address.as_u64() + last_instr.size as u64;
+                        let fall_through = last_instr.address + (last_instr.size as u64);
                         if let Some(fall_through_block) = blocks.iter()
-                            .find(|b| b.start_address().as_u64() == fall_through)
+                            .find(|b| b.start_address() == fall_through)
                         {
                             cfg.add_edge(block.id(), fall_through_block.id());
                         }
                     }
                 } else if !last_instr.is_return() {
-                    let fall_through = last_instr.address.as_u64() + last_instr.size as u64;
+                    let fall_through = last_instr.address + (last_instr.size as u64);
                     if let Some(fall_through_block) = blocks.iter()
-                        .find(|b| b.start_address().as_u64() == fall_through)
+                        .find(|b| b.start_address() == fall_through)
                     {
                         cfg.add_edge(block.id(), fall_through_block.id());
                     }
@@ -246,7 +252,7 @@ impl FunctionAnalyzer {
                 if let Some(target) = instr.branch_target() {
                     function.called_functions.push(FunctionCall {
                         call_site: instr.address,
-                        target: Address::new(target),
+                        target: target,
                         is_direct: true,
                     });
                 } else {

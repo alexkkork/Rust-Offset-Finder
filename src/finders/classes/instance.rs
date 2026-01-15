@@ -1,7 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryReader};
-use crate::pattern::Pattern;
 use crate::finders::result::ClassResult;
 use std::sync::Arc;
 

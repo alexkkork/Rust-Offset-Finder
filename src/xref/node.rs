@@ -1,4 +1,4 @@
-// Tue Jan 13 2026 - Alex
+// Tue Jan 15 2026 - Alex
 
 use crate::memory::Address;
 use std::fmt;
@@ -6,7 +6,7 @@ use std::fmt;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct GraphNode {
     address: Address,
-    name: Option<String>,
+    name: String,
     kind: NodeKind,
 }
 
@@ -16,19 +16,21 @@ pub enum NodeKind {
     Data,
     String,
     Constant,
+    External,
+    Unknown,
 }
 
 impl GraphNode {
-    pub fn new(address: Address, kind: NodeKind) -> Self {
+    pub fn new(address: Address, name: String, kind: NodeKind) -> Self {
         Self {
             address,
-            name: None,
+            name,
             kind,
         }
     }
 
     pub fn with_name(mut self, name: String) -> Self {
-        self.name = Some(name);
+        self.name = name;
         self
     }
 
@@ -36,8 +38,8 @@ impl GraphNode {
         self.address
     }
 
-    pub fn name(&self) -> Option<&str> {
-        self.name.as_deref()
+    pub fn name(&self) -> String {
+        self.name.clone()
     }
 
     pub fn kind(&self) -> NodeKind {
@@ -51,10 +53,6 @@ impl GraphNode {
 
 impl fmt::Display for GraphNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some(name) = &self.name {
-            write!(f, "{} @ {}", name, self.address)
-        } else {
-            write!(f, "{:?} @ {}", self.kind, self.address)
-        }
+        write!(f, "{} @ {}", self.name, self.address)
     }
 }

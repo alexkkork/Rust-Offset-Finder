@@ -1,4 +1,4 @@
-// Tue Jan 13 2026 - Alex
+// Tue Jan 15 2026 - Alex
 
 pub mod arm64;
 pub mod binary;
@@ -8,8 +8,10 @@ pub mod math;
 pub mod process;
 pub mod string;
 pub mod testing;
+pub mod hash;
 
 pub use arm64::Arm64Utils;
+pub use hash::{HashComputer, HashResults, RollingHash, RabinKarp, BloomFilter};
 pub use binary::BinaryUtils;
 pub use logging::LoggingUtils;
 pub use math::MathUtils;

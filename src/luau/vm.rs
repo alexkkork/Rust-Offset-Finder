@@ -18,7 +18,7 @@ impl VmAnalyzer {
         let regions = self.reader.get_regions()?;
 
         for region in &regions {
-            if !region.protection.is_executable() {
+            if !region.protection().is_executable() {
                 continue;
             }
         }

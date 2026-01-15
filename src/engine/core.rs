@@ -13,7 +13,6 @@ use crate::engine::task::{Task, TaskType};
 use crate::engine::result::TaskResult;
 use std::sync::Arc;
 use parking_lot::RwLock;
-use std::collections::HashMap;
 
 pub struct Engine {
     config: Config,
@@ -43,7 +42,7 @@ impl Engine {
         let xref_analyzer = Arc::new(RwLock::new(XRefAnalyzer::new(reader.clone())));
         let symbol_resolver = Arc::new(RwLock::new(SymbolResolver::new(reader.clone())));
         let analyzer = Arc::new(Analyzer::new(reader.clone()));
-        let scheduler = TaskScheduler::new(config.thread_count);
+        let scheduler = TaskScheduler::new(config.max_threads);
 
         Self {
             config,
@@ -67,11 +66,7 @@ impl Engine {
                 .map_err(|e| EngineError::SymbolLoadFailed(e.to_string()))?;
         }
 
-        {
-            let mut xref = self.xref_analyzer.write();
-            xref.initialize()
-                .map_err(|e| EngineError::XRefInitFailed(e.to_string()))?;
-        }
+        // XRef analyzer is ready to use after creation
 
         self.state = EngineState::Idle;
         Ok(())

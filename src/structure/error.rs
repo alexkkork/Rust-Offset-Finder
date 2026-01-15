@@ -1,6 +1,5 @@
 // Tue Jan 13 2026 - Alex
 
-use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug)]

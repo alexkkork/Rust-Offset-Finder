@@ -1,6 +1,5 @@
 // Tue Jan 13 2026 - Alex
 
-use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -33,4 +32,10 @@ pub enum MemoryError {
     Timeout,
     #[error("Not supported: {0}")]
     NotSupported(String),
+    #[error("Invalid size: {0}")]
+    InvalidSize(usize),
+    #[error("Invalid string: {0}")]
+    InvalidString(String),
+    #[error("Other error: {0}")]
+    Other(String),
 }

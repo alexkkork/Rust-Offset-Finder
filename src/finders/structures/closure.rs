@@ -41,7 +41,7 @@ impl ClosureFinder {
             ).with_confidence(0.85).with_method("heuristic"));
         }
 
-        if let Some(offset) = self.find_isC_offset(start, end) {
+        if let Some(offset) = self.find_is_c_offset(start, end) {
             results.push(StructureOffsetResult::new(
                 "Closure".to_string(),
                 "is_c".to_string(),
@@ -136,7 +136,7 @@ impl ClosureFinder {
         Some(0x07)
     }
 
-    fn find_isC_offset(&self, start: Address, end: Address) -> Option<u64> {
+    fn find_is_c_offset(&self, start: Address, end: Address) -> Option<u64> {
         let patterns = vec![
             Pattern::from_hex("39 ?? ?? ?? 37 ?? ?? ?? ?? ?? ?? 94"),
             Pattern::from_hex("39 ?? ?? ?? 36 ?? ?? ?? F9 ?? ?? ?? 94"),

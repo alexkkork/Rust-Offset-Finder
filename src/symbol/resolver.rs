@@ -33,6 +33,137 @@ impl SymbolResolver {
     }
 
     fn load_mach_o_symbols(&mut self) -> Result<(), MemoryError> {
+        // Try to parse the Mach-O header from the base address
+        let base = self.reader.get_base_address();
+        
+        // Read Mach-O magic number to verify it's a valid binary
+        let magic = self.reader.read_u32(base)?;
+        
+        // Check for valid Mach-O magic (64-bit little-endian)
+        if magic != 0xFEEDFACF && magic != 0xFEEDFACE {
+            // Not a Mach-O or can't parse from memory reader directly
+            // Try to get regions and scan for function prologues
+            return self.scan_for_functions();
+        }
+        
+        // Parse Mach-O header
+        let ncmds = self.reader.read_u32(base + 0x10)?;
+        let sizeofcmds = self.reader.read_u32(base + 0x14)?;
+        
+        // Header size for 64-bit Mach-O is 32 bytes
+        let header_size: u64 = if magic == 0xFEEDFACF { 32 } else { 28 };
+        let mut cmd_offset = base + header_size;
+        
+        let mut symtab_offset = 0u64;
+        let mut symtab_size = 0u32;
+        let mut strtab_offset = 0u64;
+        let mut strtab_size = 0u32;
+        
+        // Parse load commands to find LC_SYMTAB
+        for _ in 0..ncmds {
+            let cmd = self.reader.read_u32(cmd_offset)?;
+            let cmdsize = self.reader.read_u32(cmd_offset + 4)?;
+            
+            // LC_SYMTAB = 0x02
+            if cmd == 0x02 {
+                symtab_offset = self.reader.read_u32(cmd_offset + 8)? as u64;
+                symtab_size = self.reader.read_u32(cmd_offset + 12)?;
+                strtab_offset = self.reader.read_u32(cmd_offset + 16)? as u64;
+                strtab_size = self.reader.read_u32(cmd_offset + 20)?;
+                break;
+            }
+            
+            cmd_offset = cmd_offset + cmdsize as u64;
+        }
+        
+        if symtab_offset == 0 || strtab_offset == 0 {
+            return self.scan_for_functions();
+        }
+        
+        // Try to read string table (this might fail for process memory)
+        let string_table = match self.reader.read_bytes(base + strtab_offset, strtab_size as usize) {
+            Ok(data) => data,
+            Err(_) => return self.scan_for_functions(),
+        };
+        
+        // Each nlist_64 entry is 16 bytes
+        let entry_size = 16usize;
+        let num_symbols = symtab_size as usize;
+        
+        for i in 0..num_symbols {
+            let entry_addr = base + symtab_offset + (i * entry_size) as u64;
+            
+            // Read nlist_64 structure
+            let n_strx = match self.reader.read_u32(entry_addr) {
+                Ok(v) => v as usize,
+                Err(_) => continue,
+            };
+            let n_type = match self.reader.read_u8(entry_addr + 4) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            let n_value = match self.reader.read_u64(entry_addr + 8) {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            
+            // Skip undefined symbols
+            if n_value == 0 {
+                continue;
+            }
+            
+            // Get symbol name from string table
+            if n_strx < string_table.len() {
+                let name_bytes: Vec<u8> = string_table[n_strx..]
+                    .iter()
+                    .take_while(|&&b| b != 0)
+                    .copied()
+                    .collect();
+                    
+                if let Ok(name) = String::from_utf8(name_bytes) {
+                    if !name.is_empty() {
+                        let symbol_type = SymbolType::from_nlist_type(n_type);
+                        self.add_symbol(name, Address::new(n_value), None, symbol_type);
+                    }
+                }
+            }
+        }
+        
+        Ok(())
+    }
+    
+    fn scan_for_functions(&mut self) -> Result<(), MemoryError> {
+        // Fallback: scan memory regions for ARM64 function prologues
+        let regions = self.reader.get_regions()?;
+        
+        for region in regions {
+            // Only scan executable regions
+            if !region.is_executable() {
+                continue;
+            }
+            
+            let start = region.start().as_u64();
+            let end = region.end().as_u64();
+            
+            // Scan for common ARM64 function prologues
+            let mut addr = start;
+            while addr < end.saturating_sub(8) {
+                if let Ok(instruction) = self.reader.read_u32(Address::new(addr)) {
+                    // Check for common ARM64 function prologues:
+                    // stp x29, x30, [sp, #-N]! - save frame pointer and link register
+                    // Pattern: 0xA9x0x7BFD where x varies
+                    if (instruction & 0xFFE00FFF) == 0xA9800000 || // stp with pre-index
+                       (instruction & 0xFF8003E0) == 0xD100003F || // sub sp, sp, #N
+                       (instruction & 0xFFFFFC1F) == 0xD503201F {  // pacibsp (auth)
+                        // Found a potential function start
+                        let func_name = format!("sub_{:016x}", addr);
+                        self.add_symbol(func_name, Address::new(addr), None, SymbolType::Function);
+                    }
+                }
+                addr += 4; // ARM64 instructions are 4 bytes
+            }
+        }
+        
         Ok(())
     }
 
@@ -43,6 +174,10 @@ impl SymbolResolver {
 
     pub fn resolve_name(&self, name: &str) -> Option<&Symbol> {
         self.symbols.get(name)
+    }
+
+    pub fn resolve(&self, name: &str) -> Option<Address> {
+        self.symbols.get(name).map(|s| s.address)
     }
 
     pub fn find_by_prefix(&self, prefix: &str) -> Vec<&Symbol> {

@@ -1,6 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::structure::{Field, Offset, Size, Alignment};
+use crate::structure::{Field, Size, Alignment};
 use std::collections::HashMap;
 
 #[derive(Clone)]

@@ -57,7 +57,7 @@ impl ConfidenceScorer {
             score += 0.15;
         }
 
-        score.min(1.0)
+        (score as f64).min(1.0)
     }
 
     fn score_offset(&self, struct_name: &str, field: &str, offset: u64, results: &FinderResults) -> f64 {
@@ -93,7 +93,7 @@ impl ConfidenceScorer {
             }
         }
 
-        score.min(1.0)
+        (score as f64).min(1.0)
     }
 
     pub fn score_overall(&self, results: &FinderResults) -> f64 {

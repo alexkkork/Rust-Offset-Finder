@@ -85,7 +85,7 @@ impl HeuristicsEngine {
         Ok(functions)
     }
 
-    fn is_likely_function_start(&self, addr: Address) -> Result<bool, MemoryError> {
+    pub fn is_likely_function_start(&self, addr: Address) -> Result<bool, MemoryError> {
         let bytes = self.reader.read_bytes(addr, 16)?;
 
         let inst0 = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);

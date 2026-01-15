@@ -37,7 +37,7 @@ impl StringAnalyzer {
         let mut strings = Vec::new();
 
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
@@ -54,8 +54,8 @@ impl StringAnalyzer {
 
     fn scan_region(&self, region: &MemoryRegion) -> Result<Vec<StringInfo>, MemoryError> {
         let mut strings = Vec::new();
-        let start = region.range.start;
-        let size = region.range.size() as usize;
+        let start = region.range().start();
+        let size = region.range().size() as usize;
 
         if size > self.config.max_region_size {
             return Ok(strings);
@@ -200,14 +200,14 @@ impl StringAnalyzer {
             }
         }
 
-        relevance.min(1.0)
+        (relevance as f64).min(1.0f64)
     }
 
     pub fn find_references_to_string(&self, string_addr: Address, code_regions: &[MemoryRegion]) -> Result<Vec<StringReference>, MemoryError> {
         let mut references = Vec::new();
 
         for region in code_regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
@@ -220,8 +220,8 @@ impl StringAnalyzer {
 
     fn scan_for_references(&self, target: Address, region: &MemoryRegion) -> Result<Vec<StringReference>, MemoryError> {
         let mut refs = Vec::new();
-        let start = region.range.start;
-        let size = region.range.size() as usize;
+        let start = region.range().start();
+        let size = region.range().size() as usize;
 
         if size > self.config.max_region_size {
             return Ok(refs);

@@ -17,8 +17,8 @@ pub struct LuaCallFinder {
 impl LuaCallFinder {
     pub fn new(reader: Arc<dyn MemoryReader>) -> Self {
         Self {
-            reader,
-            pattern_matcher: PatternMatcher::new(),
+            reader: reader.clone(),
+            pattern_matcher: PatternMatcher::new(reader),
             symbol_resolver: None,
             xref_analyzer: None,
         }
@@ -85,22 +85,24 @@ impl LuaCallFinder {
         ];
 
         for pattern in patterns {
-            if let Some(addr) = self.pattern_matcher.find_pattern_in_range(
-                self.reader.as_ref(),
-                &pattern,
+            let pattern_bytes = pattern.bytes();
+            if let Ok(addrs) = self.pattern_matcher.find_pattern_in_range(
+                pattern_bytes,
                 start,
                 end,
             ) {
-                let func_start = self.find_function_start(addr);
-                if self.validate_lua_call(func_start) {
-                    return Some(FinderResult {
-                        name: "lua_call".to_string(),
-                        address: func_start,
-                        confidence: 0.85,
-                        method: "pattern".to_string(),
-                        category: "lua_api".to_string(),
-                        signature: Some("void lua_call(lua_State *L, int nargs, int nresults)".to_string()),
-                    });
+                if let Some(addr) = addrs.first().copied() {
+                    let func_start = self.find_function_start(addr);
+                    if self.validate_lua_call(func_start) {
+                        return Some(FinderResult {
+                            name: "lua_call".to_string(),
+                            address: func_start,
+                            confidence: 0.85,
+                            method: "pattern".to_string(),
+                            category: "lua_api".to_string(),
+                            signature: Some("void lua_call(lua_State *L, int nargs, int nresults)".to_string()),
+                        });
+                    }
                 }
             }
         }
@@ -122,7 +124,7 @@ impl LuaCallFinder {
                 let xrefs = analyzer.get_references_to(string_addr);
 
                 for xref in xrefs {
-                    let func_start = self.find_function_start(xref);
+                    let func_start = self.find_function_start(xref.from());
                     if self.validate_lua_call(func_start) {
                         return Some(FinderResult {
                             name: "lua_call".to_string(),

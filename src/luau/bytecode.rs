@@ -3,7 +3,6 @@
 use crate::memory::{Address, MemoryReader, MemoryError};
 use crate::luau::opcode::{LuauOpcode, OpcodeInfo};
 use std::sync::Arc;
-use std::collections::HashMap;
 
 pub struct LuauBytecode {
     instructions: Vec<BytecodeInstruction>,
@@ -229,7 +228,7 @@ impl BytecodeInstruction {
             OpcodeFormat::AB => format!("R{}, R{}", self.a, self.b),
             OpcodeFormat::ABC => format!("R{}, R{}, R{}", self.a, self.b, self.c),
             OpcodeFormat::AD => format!("R{}, {}", self.a, self.d),
-            OpcodeFormat::AsBx => format!("R{}, {}", self.a, self.d - 0x8000),
+            OpcodeFormat::AsBx => format!("R{}, {}", self.a, self.d as i32 - 0x8000i32),
             OpcodeFormat::ABx => format!("R{}, K{}", self.a, ((self.raw >> 16) & 0xFFFF)),
             OpcodeFormat::Ax => format!("{}", self.raw >> 8),
         }
@@ -253,7 +252,7 @@ impl BytecodeInstruction {
     pub fn is_call(&self) -> bool {
         matches!(self.opcode,
             LuauOpcode::Call |
-            LuauOpcode::TailCall
+            LuauOpcode::Call
         )
     }
 

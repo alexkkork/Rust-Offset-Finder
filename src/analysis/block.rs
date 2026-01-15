@@ -42,6 +42,18 @@ impl BasicBlock {
         self.end
     }
 
+    pub fn id(&self) -> u64 {
+        self.start.as_u64()
+    }
+
+    pub fn start_address(&self) -> Address {
+        self.start
+    }
+
+    pub fn add_instruction(&mut self, instr: DisassembledInstruction) {
+        self.instructions.push(instr);
+    }
+
     pub fn size(&self) -> u64 {
         self.end.as_u64() - self.start.as_u64()
     }
@@ -245,7 +257,7 @@ impl BasicBlock {
         let mut killed: Vec<u8> = Vec::new();
 
         for insn in &self.instructions {
-            for &src in insn.source_registers() {
+            for src in insn.source_registers() {
                 if !defined.contains(&src) {
                     used.push(src);
                 }

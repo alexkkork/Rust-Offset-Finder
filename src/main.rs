@@ -1,5 +1,11 @@
 // Tue Jan 13 2026 - Alex
 
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+#![allow(dead_code)]
+#![allow(unused_assignments)]
+#![allow(unused_imports)]
+
 use clap::Parser;
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -46,7 +52,7 @@ fn main() {
     let args = Args::parse();
 
     if !args.no_banner {
-        Banner::print();
+        Banner::print_default();
     }
 
     println!("{}", "Roblox Offset Generator for ARM64".cyan().bold());
@@ -167,8 +173,8 @@ fn calculate_scan_range(regions: &[roblox_offset_generator::memory::MemoryRegion
     let mut max_addr = 0u64;
 
     for region in regions {
-        let start = region.range.start.as_u64();
-        let end = start + region.range.size;
+        let start = region.range().start().as_u64();
+        let end = start + region.range().size();
 
         if start < min_addr {
             min_addr = start;

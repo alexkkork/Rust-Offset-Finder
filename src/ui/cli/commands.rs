@@ -3,7 +3,6 @@
 pub use super::args::Command;
 
 use super::args::{GenerateArgs, DiffArgs, StatsArgs, ValidateArgs, DumpArgs};
-use std::path::PathBuf;
 
 pub trait CommandExecutor {
     fn execute(&self) -> anyhow::Result<()>;

@@ -116,6 +116,49 @@ impl Terminal {
         write!(self.stdout, "\x07")?;
         self.stdout.flush()
     }
+
+    pub fn print_info(&self, message: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "ℹ {}", message)?;
+        io::stdout().flush()
+    }
+
+    pub fn print_success(&self, message: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "✓ {}", message)?;
+        io::stdout().flush()
+    }
+
+    pub fn print_warning(&self, message: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "⚠ {}", message)?;
+        io::stdout().flush()
+    }
+
+    pub fn print_error(&self, message: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "✗ {}", message)?;
+        io::stdout().flush()
+    }
+
+    pub fn print_debug(&self, message: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "🔍 {}", message)?;
+        io::stdout().flush()
+    }
+
+    pub fn print_section(&self, title: &str) -> io::Result<()> {
+        writeln!(io::stdout(), "\n=== {} ===", title)?;
+        io::stdout().flush()
+    }
+
+    pub fn confirm(&self, message: &str) -> bool {
+        use std::io::{self, BufRead};
+        print!("{} [y/N]: ", message);
+        let _ = io::stdout().flush();
+        let stdin = io::stdin();
+        let mut line = String::new();
+        if let Ok(_) = stdin.lock().read_line(&mut line) {
+            line.trim().to_lowercase() == "y"
+        } else {
+            false
+        }
+    }
 }
 
 impl Default for Terminal {

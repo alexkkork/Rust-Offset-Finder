@@ -42,7 +42,7 @@ impl ValidationReport {
             }
         }
 
-        self.overall_score = score.max(0.0);
+        self.overall_score = (score as f64).max(0.0);
     }
 
     pub fn errors(&self) -> impl Iterator<Item = &ValidationIssue> {

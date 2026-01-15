@@ -1,7 +1,7 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryReader};
-use crate::xref::{CallGraph, XRef, XRefError, GraphNode, GraphEdge, NodeKind, EdgeKind};
+use crate::xref::{CallGraph, XRef, XRefError, GraphNode, GraphEdge, EdgeKind};
 use std::sync::Arc;
 
 pub struct XRefAnalyzer {
@@ -42,5 +42,13 @@ impl XRefAnalyzer {
 
     pub fn add_edge(&mut self, edge: GraphEdge) {
         self.graph.add_edge(edge);
+    }
+
+    pub fn get_references_to(&self, target: Address) -> Vec<XRef> {
+        self.graph.get_references_to(target)
+    }
+
+    pub fn get_references_from(&self, source: Address) -> Vec<XRef> {
+        self.graph.get_references_from(source)
     }
 }

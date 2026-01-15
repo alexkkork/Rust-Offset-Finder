@@ -1,7 +1,7 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryError, MemoryReader, MemoryRegion, MemoryRange, Protection};
-use goblin::mach::{Mach, MachO};
+use goblin::mach::Mach;
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -563,6 +563,14 @@ impl MemoryReader for BinaryMemory {
         }
         String::from_utf8(bytes)
             .map_err(|e| MemoryError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
+    }
+
+    fn get_base_address(&self) -> Address {
+        self.base_address
+    }
+
+    fn get_regions(&self) -> Result<Vec<MemoryRegion>, MemoryError> {
+        self.enumerate_regions()
     }
 }
 

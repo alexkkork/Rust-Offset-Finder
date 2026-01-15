@@ -1,10 +1,10 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
 use crate::memory::Address;
-use crate::xref::{GraphNode, GraphEdge, XRefError};
-use std::collections::{HashMap, HashSet};
+use crate::xref::{GraphNode, GraphEdge, XRef, XRefKind};
+use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CallGraph {
     nodes: HashMap<u64, GraphNode>,
     edges: Vec<GraphEdge>,
@@ -65,6 +65,32 @@ impl CallGraph {
 
     pub fn edge_count(&self) -> usize {
         self.edges.len()
+    }
+
+    pub fn get_references_to(&self, target: Address) -> Vec<XRef> {
+        self.incoming.get(&target.as_u64())
+            .map(|indices| {
+                indices.iter()
+                    .map(|&i| {
+                        let edge = &self.edges[i];
+                        XRef::new(edge.from(), edge.to(), XRefKind::Call)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    pub fn get_references_from(&self, source: Address) -> Vec<XRef> {
+        self.outgoing.get(&source.as_u64())
+            .map(|indices| {
+                indices.iter()
+                    .map(|&i| {
+                        let edge = &self.edges[i];
+                        XRef::new(edge.from(), edge.to(), XRefKind::Call)
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
     }
 }
 

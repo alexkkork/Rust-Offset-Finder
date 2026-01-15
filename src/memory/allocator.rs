@@ -1,6 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::{Address, MemoryError, MemoryRange};
+use crate::memory::{Address, MemoryError};
 use std::collections::BTreeMap;
 
 pub struct MemoryAllocator {

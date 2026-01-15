@@ -2,8 +2,6 @@
 
 use crate::memory::{Address, MemoryReader, MemoryRegion};
 use crate::pattern::Pattern;
-use rayon::prelude::*;
-use std::sync::Arc;
 
 pub struct PatternScanner {
     chunk_size: usize,
@@ -38,7 +36,7 @@ impl PatternScanner {
     pub fn scan(&self, reader: &dyn MemoryReader, pattern: &Pattern, regions: &[MemoryRegion]) -> Vec<Address> {
         let filtered_regions: Vec<_> = if self.skip_unreadable {
             regions.iter()
-                .filter(|r| r.protection.is_readable())
+                .filter(|r| r.protection().is_readable())
                 .cloned()
                 .collect()
         } else {
@@ -56,8 +54,8 @@ impl PatternScanner {
         let mut results = Vec::new();
 
         for region in regions {
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let mut offset = 0;
             while offset < size {
@@ -81,8 +79,8 @@ impl PatternScanner {
     fn scan_parallel(&self, reader: &dyn MemoryReader, pattern: &Pattern, regions: &[MemoryRegion]) -> Vec<Address> {
         let chunks: Vec<_> = regions.iter()
             .flat_map(|region| {
-                let start = region.range.start;
-                let size = region.range.size as usize;
+                let start = region.range().start();
+                let size = region.range().size() as usize;
                 let overlap = pattern.len().saturating_sub(1);
                 let step = self.chunk_size.saturating_sub(overlap);
 
@@ -113,7 +111,7 @@ impl PatternScanner {
     pub fn scan_multiple(&self, reader: &dyn MemoryReader, patterns: &[Pattern], regions: &[MemoryRegion]) -> Vec<(usize, Address)> {
         let filtered_regions: Vec<_> = if self.skip_unreadable {
             regions.iter()
-                .filter(|r| r.protection.is_readable())
+                .filter(|r| r.protection().is_readable())
                 .cloned()
                 .collect()
         } else {
@@ -128,8 +126,8 @@ impl PatternScanner {
         let mut results = Vec::new();
 
         for region in &filtered_regions {
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let overlap = max_pattern_len.saturating_sub(1);
             let step = self.chunk_size.saturating_sub(overlap);
@@ -157,7 +155,7 @@ impl PatternScanner {
     pub fn scan_first(&self, reader: &dyn MemoryReader, pattern: &Pattern, regions: &[MemoryRegion]) -> Option<Address> {
         let filtered_regions: Vec<_> = if self.skip_unreadable {
             regions.iter()
-                .filter(|r| r.protection.is_readable())
+                .filter(|r| r.protection().is_readable())
                 .cloned()
                 .collect()
         } else {
@@ -165,8 +163,8 @@ impl PatternScanner {
         };
 
         for region in &filtered_regions {
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let overlap = pattern.len().saturating_sub(1);
             let step = self.chunk_size.saturating_sub(overlap);

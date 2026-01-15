@@ -129,6 +129,19 @@ impl ControlFlowGraph {
             .unwrap_or_default()
     }
 
+    pub fn add_edge(&mut self, from_id: u64, to_id: u64) {
+        let from_addr = Address::new(from_id);
+        let to_addr = Address::new(to_id);
+        
+        if let Some(from_block) = self.blocks.get_mut(&from_id) {
+            from_block.add_successor(to_addr);
+        }
+        
+        if let Some(to_block) = self.blocks.get_mut(&to_id) {
+            to_block.add_predecessor(from_addr);
+        }
+    }
+
     pub fn dominator(&self, addr: Address) -> Option<Address> {
         self.dominators.get(&addr.as_u64()).map(|&d| Address::new(d))
     }

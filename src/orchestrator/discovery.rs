@@ -104,7 +104,7 @@ impl DiscoveryOrchestrator {
             .map_err(|e| DiscoveryError::MemoryError(e))?;
 
         let executable_regions: Vec<_> = regions.iter()
-            .filter(|r| r.protection.is_executable())
+            .filter(|r| r.protection().is_executable())
             .collect();
 
         let patterns = self.get_discovery_patterns();
@@ -147,7 +147,7 @@ impl DiscoveryOrchestrator {
             .map_err(|e| DiscoveryError::MemoryError(e))?;
 
         for region in &regions {
-            if !region.protection.is_executable() {
+            if !region.protection().is_executable() {
                 continue;
             }
 
@@ -200,7 +200,7 @@ impl DiscoveryOrchestrator {
     fn find_function_prologues(&self, region: &MemoryRegion) -> Result<Vec<(Address, f64)>, DiscoveryError> {
         let mut functions = Vec::new();
 
-        let data = self.reader.read_bytes(region.range.start, region.range.size() as usize)
+        let data = self.reader.read_bytes(region.range().start(), region.range().size() as usize)
             .map_err(|e| DiscoveryError::MemoryError(e))?;
 
         for offset in (0..data.len().saturating_sub(8)).step_by(4) {
@@ -213,10 +213,10 @@ impl DiscoveryOrchestrator {
             let is_stp_general = (word & 0xFE000000) == 0xA9000000;
 
             if is_stp_x29_x30 {
-                let addr = Address::new(region.range.start.as_u64() + offset as u64);
+                let addr = Address::new(region.range().start().as_u64() + offset as u64);
                 functions.push((addr, 0.9));
             } else if is_sub_sp || is_stp_general {
-                let addr = Address::new(region.range.start.as_u64() + offset as u64);
+                let addr = Address::new(region.range().start().as_u64() + offset as u64);
                 functions.push((addr, 0.6));
             }
         }

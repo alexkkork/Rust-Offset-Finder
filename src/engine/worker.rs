@@ -18,9 +18,9 @@ pub struct Worker {
     thread_handle: Option<JoinHandle<()>>,
 }
 
-struct PrioritizedTask {
-    task: Task,
-    priority: i32,
+pub struct PrioritizedTask {
+    pub task: Task,
+    pub priority: i32,
 }
 
 impl PartialEq for PrioritizedTask {

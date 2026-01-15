@@ -95,7 +95,12 @@ impl UIManager {
     }
 
     pub fn create_progress(&self, total: u64, message: &str) -> ProgressHandle {
-        self.progress.create(total, message)
+        let pb = self.progress.create_main_progress(total, message);
+        ProgressHandle {
+            id: pb.position() as usize,
+            current: 0,
+            total,
+        }
     }
 
     pub fn create_spinner(&self, message: &str) -> Spinner {

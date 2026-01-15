@@ -26,8 +26,9 @@ impl Disassembler {
         Ok(DisassembledInstruction {
             address: addr,
             bytes: bytes.to_vec(),
-            mnemonic,
-            operands,
+            mnemonic: mnemonic.clone(),
+            operands: operands.clone(),
+            op_str: operands,
             raw,
             size: 4,
         })
@@ -253,6 +254,7 @@ pub struct DisassembledInstruction {
     pub bytes: Vec<u8>,
     pub mnemonic: String,
     pub operands: String,
+    pub op_str: String,
     pub raw: u32,
     pub size: usize,
 }
@@ -264,5 +266,94 @@ impl DisassembledInstruction {
 
     pub fn is_nop(&self) -> bool {
         self.raw == 0xD503201F
+    }
+
+    pub fn address(&self) -> Address {
+        self.address
+    }
+
+    pub fn is_branch(&self) -> bool {
+        self.mnemonic.starts_with("B") || self.mnemonic == "RET" || self.mnemonic == "CBZ" || self.mnemonic == "CBNZ"
+    }
+
+    pub fn is_call(&self) -> bool {
+        self.mnemonic == "BL" || self.mnemonic == "BLR"
+    }
+
+    pub fn is_return(&self) -> bool {
+        self.mnemonic == "RET"
+    }
+
+    pub fn is_conditional_branch(&self) -> bool {
+        self.mnemonic.starts_with("B.") || self.mnemonic == "CBZ" || self.mnemonic == "CBNZ"
+    }
+
+    pub fn is_unconditional_branch(&self) -> bool {
+        self.mnemonic == "B" || self.mnemonic == "BR"
+    }
+
+    pub fn branch_target(&self) -> Option<Address> {
+        if self.mnemonic == "BL" || self.mnemonic == "B" {
+            let imm26 = self.raw & 0x03FFFFFF;
+            let offset = if imm26 & 0x02000000 != 0 {
+                ((imm26 | 0xFC000000) as i32) * 4
+            } else {
+                (imm26 as i32) * 4
+            };
+            let target = (self.address.as_u64() as i64 + offset as i64) as u64;
+            Some(Address::new(target))
+        } else if self.mnemonic.starts_with("B.") || self.mnemonic == "CBZ" || self.mnemonic == "CBNZ" {
+            let imm19 = (self.raw >> 5) & 0x7FFFF;
+            let offset = if imm19 & 0x40000 != 0 {
+                ((imm19 | 0xFFF80000) as i32) * 4
+            } else {
+                (imm19 as i32) * 4
+            };
+            let target = (self.address.as_u64() as i64 + offset as i64) as u64;
+            Some(Address::new(target))
+        } else {
+            None
+        }
+    }
+
+    pub fn branch_targets(&self) -> Vec<Address> {
+        self.branch_target().into_iter().collect()
+    }
+
+    pub fn source_registers(&self) -> Vec<u8> {
+        let mut regs = Vec::new();
+        if self.mnemonic == "ADD" || self.mnemonic == "SUB" || self.mnemonic == "SUBS" {
+            let rn = ((self.raw >> 5) & 0x1F) as u8;
+            regs.push(rn);
+            if self.operands.contains("X") || self.operands.contains("W") {
+                let rm = ((self.raw >> 16) & 0x1F) as u8;
+                if rm != 31 {
+                    regs.push(rm);
+                }
+            }
+        } else if self.mnemonic == "LDR" || self.mnemonic == "STR" {
+            let rn = ((self.raw >> 5) & 0x1F) as u8;
+            regs.push(rn);
+        } else if self.mnemonic == "MOV" {
+            let rm = ((self.raw >> 16) & 0x1F) as u8;
+            regs.push(rm);
+        }
+        regs
+    }
+
+    pub fn destination_register(&self) -> Option<u8> {
+        if self.mnemonic == "LDR" || self.mnemonic == "ADD" || self.mnemonic == "SUB" ||
+           self.mnemonic == "MOV" || self.mnemonic == "MOVZ" || self.mnemonic == "MOVK" ||
+           self.mnemonic == "ADRP" || self.mnemonic == "ADR" {
+            Some((self.raw & 0x1F) as u8)
+        } else {
+            None
+        }
+    }
+}
+
+impl std::fmt::Display for DisassembledInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:016X}: {} {}", self.address.as_u64(), self.mnemonic, self.operands)
     }
 }

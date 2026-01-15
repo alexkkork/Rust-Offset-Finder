@@ -37,62 +37,67 @@ impl OutputFinalizer {
     }
 
     pub fn finalize(&self, results: FinderResults, config: &Config) -> OutputManager {
-        let mut output = OutputManager::new();
+        let target_name = config.target_binary.as_ref()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str())
+            .unwrap_or("target");
+        let output_path = config.output_file.clone();
+        let output = OutputManager::new(target_name, output_path);
 
         for (name, addr) in results.functions {
-            output.add_function(name, addr.as_u64());
+            output.add_function(&name, addr.as_u64(), 0.8, "unknown", "function");
         }
 
         for (struct_name, fields) in results.structure_offsets {
             for (field, offset) in fields {
-                output.add_structure_offset(struct_name.clone(), field, offset);
+                output.add_structure_field(&struct_name, &field, offset as usize, 8, "unknown");
             }
         }
 
         for (name, addr) in results.classes {
-            output.add_class(name, addr.as_u64());
+            output.add_class(&name, Some(addr.as_u64()), 0, None);
         }
 
         for (class, props) in results.properties {
             for (prop, offset) in props {
-                output.add_property(class.clone(), prop, offset);
+                output.add_property(&prop, &class, None, None, Some(offset as usize), "unknown");
             }
         }
 
         for (class, methods) in results.methods {
             for (method, addr) in methods {
-                output.add_method(class.clone(), method, addr.as_u64());
+                output.add_method(&method, &class, addr.as_u64(), None, false, None);
             }
         }
 
         for (name, value) in results.constants {
-            output.add_constant(name, value);
-        }
-
-        if self.include_metadata {
-            output.set_metadata("version", "1.0.0");
-            output.set_metadata("generator", "roblox-offset-generator");
-            output.set_metadata("target", &config.target_binary.to_string_lossy());
+            output.add_constant_integer(&name, value, value as i64, "constant");
         }
 
         output
     }
 
     pub fn to_offset_output(&self, results: FinderResults) -> OffsetOutput {
+        use crate::output::{FunctionOffset, StructureOffsets};
+        
         let mut functions = HashMap::new();
         for (name, addr) in results.functions {
-            functions.insert(name, addr.as_u64());
+            functions.insert(name, FunctionOffset::new(addr.as_u64(), 0.8, "unknown"));
         }
 
         let mut structure_offsets = HashMap::new();
         for (struct_name, fields) in results.structure_offsets {
-            structure_offsets.insert(struct_name, fields);
+            let mut structure = StructureOffsets::new(0, 8);
+            for (field_name, offset) in fields {
+                structure.add_field(&field_name, offset as usize, 8, "unknown");
+            }
+            structure_offsets.insert(struct_name, structure);
         }
 
-        OffsetOutput {
-            functions,
-            structure_offsets,
-        }
+        let mut output = OffsetOutput::new("target");
+        output.functions = functions;
+        output.structure_offsets = structure_offsets;
+        output
     }
 
     pub fn format_for_display(&self, results: &FinderResults) -> String {

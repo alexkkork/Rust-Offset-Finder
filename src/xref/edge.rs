@@ -1,4 +1,4 @@
-// Tue Jan 13 2026 - Alex
+// Tue Jan 15 2026 - Alex
 
 use crate::memory::Address;
 use std::fmt;
@@ -16,6 +16,8 @@ pub enum EdgeKind {
     Data,
     String,
     Constant,
+    Jump,
+    Reference,
 }
 
 impl GraphEdge {

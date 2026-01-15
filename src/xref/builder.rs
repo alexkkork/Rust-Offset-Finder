@@ -15,7 +15,7 @@ impl CallGraphBuilder {
     }
 
     pub fn add_function(mut self, address: Address, name: Option<String>) -> Self {
-        let node = GraphNode::new(address, NodeKind::Function).with_name(name.unwrap_or_default());
+        let node = GraphNode::new(address, name.unwrap_or_else(|| format!("func_{:x}", address.as_u64())), NodeKind::Function);
         self.graph.add_node(node);
         self
     }

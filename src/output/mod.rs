@@ -18,7 +18,6 @@ pub use template::TemplateEngine;
 pub use diff::DiffGenerator;
 pub use stats::StatisticsCollector;
 
-use crate::memory::Address;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 

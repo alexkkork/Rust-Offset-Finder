@@ -1,6 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::memory::{Address, MemoryReader, MemoryError};
+use crate::memory::{Address, MemoryReader};
 use crate::finders::result::FinderResults;
 use crate::validation::rules::ValidationRule;
 use crate::validation::checker::ValidationChecker;

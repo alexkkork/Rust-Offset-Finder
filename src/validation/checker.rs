@@ -15,7 +15,7 @@ impl ValidationChecker {
     pub fn check_address_readable(&self, addr: Address) -> Result<bool, MemoryError> {
         match self.reader.read_u8(addr) {
             Ok(_) => Ok(true),
-            Err(MemoryError::ReadFailed(_, _)) => Ok(false),
+            Err(MemoryError::ReadFailed(_)) => Ok(false),
             Err(e) => Err(e),
         }
     }

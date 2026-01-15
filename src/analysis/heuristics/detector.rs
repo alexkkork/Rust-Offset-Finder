@@ -266,7 +266,7 @@ impl OffsetDetector {
         Ok(detected)
     }
 
-    pub fn get_high_confidence_offsets(&self, detections: &[DetectedOffset]) -> Vec<&DetectedOffset> {
+    pub fn get_high_confidence_offsets<'a>(&self, detections: &'a [DetectedOffset]) -> Vec<&'a DetectedOffset> {
         detections.iter()
             .filter(|d| self.threshold_config.classify(d.confidence) == ConfidenceLevel::High)
             .collect()

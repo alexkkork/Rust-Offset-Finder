@@ -2,9 +2,8 @@
 
 use crate::memory::Address;
 use crate::analysis::disassembler::DisassembledInstruction;
-use crate::analysis::block::BasicBlock;
 use crate::analysis::cfg::ControlFlowGraph;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
 pub struct DataFlowAnalyzer {
     cfg: ControlFlowGraph,
@@ -18,8 +17,8 @@ impl DataFlowAnalyzer {
     pub fn compute_reaching_definitions(&self) -> ReachingDefinitions {
         let mut rd = ReachingDefinitions::new();
 
-        let mut gen: HashMap<usize, HashSet<Definition>> = HashMap::new();
-        let mut kill: HashMap<usize, HashSet<String>> = HashMap::new();
+        let mut gen: HashMap<u64, HashSet<Definition>> = HashMap::new();
+        let mut kill: HashMap<u64, HashSet<String>> = HashMap::new();
 
         for block in self.cfg.blocks() {
             let block_id = block.id();
@@ -42,8 +41,8 @@ impl DataFlowAnalyzer {
             kill.insert(block_id, block_kill);
         }
 
-        let mut in_sets: HashMap<usize, HashSet<Definition>> = HashMap::new();
-        let mut out_sets: HashMap<usize, HashSet<Definition>> = HashMap::new();
+        let mut in_sets: HashMap<u64, HashSet<Definition>> = HashMap::new();
+        let mut out_sets: HashMap<u64, HashSet<Definition>> = HashMap::new();
 
         for block in self.cfg.blocks() {
             in_sets.insert(block.id(), HashSet::new());
@@ -58,7 +57,8 @@ impl DataFlowAnalyzer {
                 let block_id = block.id();
 
                 let mut new_in = HashSet::new();
-                for pred_id in self.cfg.predecessors(block_id) {
+                for pred_addr in self.cfg.predecessors(block.start_address()) {
+                    let pred_id = pred_addr.as_u64();
                     if let Some(pred_out) = out_sets.get(&pred_id) {
                         new_in.extend(pred_out.iter().cloned());
                     }
@@ -91,8 +91,8 @@ impl DataFlowAnalyzer {
     pub fn compute_live_variables(&self) -> LiveVariables {
         let mut lv = LiveVariables::new();
 
-        let mut use_sets: HashMap<usize, HashSet<String>> = HashMap::new();
-        let mut def_sets: HashMap<usize, HashSet<String>> = HashMap::new();
+        let mut use_sets: HashMap<u64, HashSet<String>> = HashMap::new();
+        let mut def_sets: HashMap<u64, HashSet<String>> = HashMap::new();
 
         for block in self.cfg.blocks() {
             let block_id = block.id();
@@ -116,8 +116,8 @@ impl DataFlowAnalyzer {
             def_sets.insert(block_id, block_def);
         }
 
-        let mut in_sets: HashMap<usize, HashSet<String>> = HashMap::new();
-        let mut out_sets: HashMap<usize, HashSet<String>> = HashMap::new();
+        let mut in_sets: HashMap<u64, HashSet<String>> = HashMap::new();
+        let mut out_sets: HashMap<u64, HashSet<String>> = HashMap::new();
 
         for block in self.cfg.blocks() {
             in_sets.insert(block.id(), HashSet::new());
@@ -128,11 +128,13 @@ impl DataFlowAnalyzer {
         while changed {
             changed = false;
 
-            for block in self.cfg.blocks().iter().rev() {
+            let blocks: Vec<_> = self.cfg.blocks().collect();
+            for block in blocks.iter().rev() {
                 let block_id = block.id();
 
                 let mut new_out = HashSet::new();
-                for succ_id in self.cfg.successors(block_id) {
+                for succ_addr in &block.successors {
+                    let succ_id = succ_addr.as_u64();
                     if let Some(succ_in) = in_sets.get(&succ_id) {
                         new_out.extend(succ_in.iter().cloned());
                     }
@@ -206,8 +208,8 @@ impl DataFlowAnalyzer {
     pub fn compute_available_expressions(&self) -> AvailableExpressions {
         let mut ae = AvailableExpressions::new();
 
-        let mut gen: HashMap<usize, HashSet<Expression>> = HashMap::new();
-        let mut kill: HashMap<usize, HashSet<Expression>> = HashMap::new();
+        let mut gen: HashMap<u64, HashSet<Expression>> = HashMap::new();
+        let mut kill: HashMap<u64, HashSet<Expression>> = HashMap::new();
 
         for block in self.cfg.blocks() {
             let block_id = block.id();
@@ -239,14 +241,14 @@ impl DataFlowAnalyzer {
             kill.insert(block_id, block_kill);
         }
 
-        let mut in_sets: HashMap<usize, HashSet<Expression>> = HashMap::new();
-        let mut out_sets: HashMap<usize, HashSet<Expression>> = HashMap::new();
+        let mut in_sets: HashMap<u64, HashSet<Expression>> = HashMap::new();
+        let mut out_sets: HashMap<u64, HashSet<Expression>> = HashMap::new();
 
         let all_exprs: HashSet<Expression> = gen.values().flatten().cloned().collect();
 
         for block in self.cfg.blocks() {
             let block_id = block.id();
-            if self.cfg.predecessors(block_id).is_empty() {
+            if self.cfg.predecessors(block.start_address()).is_empty() {
                 in_sets.insert(block_id, HashSet::new());
             } else {
                 in_sets.insert(block_id, all_exprs.clone());
@@ -260,13 +262,14 @@ impl DataFlowAnalyzer {
 
             for block in self.cfg.blocks() {
                 let block_id = block.id();
-                let preds = self.cfg.predecessors(block_id);
+                let preds = self.cfg.predecessors(block.start_address());
 
                 let new_in = if preds.is_empty() {
                     HashSet::new()
                 } else {
                     let mut result = all_exprs.clone();
-                    for pred_id in preds {
+                    for pred_addr in preds {
+                        let pred_id = pred_addr.as_u64();
                         if let Some(pred_out) = out_sets.get(&pred_id) {
                             result = result.intersection(pred_out).cloned().collect();
                         }
@@ -367,8 +370,8 @@ impl DataFlowAnalyzer {
 
 #[derive(Debug, Clone)]
 pub struct ReachingDefinitions {
-    pub in_sets: HashMap<usize, HashSet<Definition>>,
-    pub out_sets: HashMap<usize, HashSet<Definition>>,
+    pub in_sets: HashMap<u64, HashSet<Definition>>,
+    pub out_sets: HashMap<u64, HashSet<Definition>>,
 }
 
 impl ReachingDefinitions {
@@ -379,7 +382,7 @@ impl ReachingDefinitions {
         }
     }
 
-    pub fn reaching_at(&self, block_id: usize) -> Option<&HashSet<Definition>> {
+    pub fn reaching_at(&self, block_id: u64) -> Option<&HashSet<Definition>> {
         self.in_sets.get(&block_id)
     }
 }
@@ -394,13 +397,13 @@ impl Default for ReachingDefinitions {
 pub struct Definition {
     pub register: String,
     pub address: Address,
-    pub block_id: usize,
+    pub block_id: u64,
 }
 
 #[derive(Debug, Clone)]
 pub struct LiveVariables {
-    pub in_sets: HashMap<usize, HashSet<String>>,
-    pub out_sets: HashMap<usize, HashSet<String>>,
+    pub in_sets: HashMap<u64, HashSet<String>>,
+    pub out_sets: HashMap<u64, HashSet<String>>,
 }
 
 impl LiveVariables {
@@ -411,11 +414,11 @@ impl LiveVariables {
         }
     }
 
-    pub fn live_in(&self, block_id: usize) -> Option<&HashSet<String>> {
+    pub fn live_in(&self, block_id: u64) -> Option<&HashSet<String>> {
         self.in_sets.get(&block_id)
     }
 
-    pub fn live_out(&self, block_id: usize) -> Option<&HashSet<String>> {
+    pub fn live_out(&self, block_id: u64) -> Option<&HashSet<String>> {
         self.out_sets.get(&block_id)
     }
 }
@@ -483,8 +486,8 @@ impl Expression {
 
 #[derive(Debug, Clone)]
 pub struct AvailableExpressions {
-    pub in_sets: HashMap<usize, HashSet<Expression>>,
-    pub out_sets: HashMap<usize, HashSet<Expression>>,
+    pub in_sets: HashMap<u64, HashSet<Expression>>,
+    pub out_sets: HashMap<u64, HashSet<Expression>>,
     pub all_expressions: HashSet<Expression>,
 }
 
@@ -497,7 +500,7 @@ impl AvailableExpressions {
         }
     }
 
-    pub fn available_at(&self, block_id: usize) -> Option<&HashSet<Expression>> {
+    pub fn available_at(&self, block_id: u64) -> Option<&HashSet<Expression>> {
         self.in_sets.get(&block_id)
     }
 }

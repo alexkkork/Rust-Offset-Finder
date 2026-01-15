@@ -2,10 +2,10 @@
 
 use crate::memory::{Address, MemoryReader, MemoryError};
 use crate::analysis::disassembler::{Disassembler, DisassembledInstruction};
-use crate::analysis::block::BasicBlock;
 use std::sync::Arc;
 use std::collections::{HashMap, HashSet, VecDeque};
 
+#[derive(Debug, Clone)]
 pub struct ControlFlowGraph {
     entry: Address,
     blocks: HashMap<u64, CfgBlock>,
@@ -172,6 +172,26 @@ impl ControlFlowGraph {
         self.exit_blocks.contains(&addr.as_u64())
     }
 
+    pub fn add_block(&mut self, block: CfgBlock) {
+        self.blocks.insert(block.start.as_u64(), block);
+    }
+
+    pub fn add_edge(&mut self, from_id: u64, to_id: u64) {
+        self.edges.push(CfgEdge {
+            from: Address::new(from_id),
+            to: Address::new(to_id),
+            edge_type: EdgeType::Flow,
+        });
+    }
+
+    pub fn predecessors(&self, addr: Address) -> Vec<Address> {
+        if let Some(block) = self.blocks.get(&addr.as_u64()) {
+            block.predecessors.clone()
+        } else {
+            Vec::new()
+        }
+    }
+
     pub fn dominators(&self) -> HashMap<u64, HashSet<u64>> {
         let mut dom: HashMap<u64, HashSet<u64>> = HashMap::new();
 
@@ -260,6 +280,18 @@ pub struct CfgBlock {
 }
 
 impl CfgBlock {
+    pub fn id(&self) -> u64 {
+        self.start.as_u64()
+    }
+
+    pub fn instructions(&self) -> &[DisassembledInstruction] {
+        &self.instructions
+    }
+
+    pub fn start_address(&self) -> Address {
+        self.start
+    }
+
     pub fn instruction_count(&self) -> usize {
         self.instructions.len()
     }

@@ -217,8 +217,10 @@ impl ConfigFile {
     }
 
     pub fn get_default_path() -> PathBuf {
-        dirs_next::config_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
+        std::env::var("HOME")
+            .map(|home| PathBuf::from(home))
+            .unwrap_or_else(|_| PathBuf::from("."))
+            .join(".config")
             .join("roblox-offset-generator")
             .join("config.json")
     }

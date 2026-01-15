@@ -14,8 +14,7 @@ pub use scoring::HeuristicScorer;
 pub use learning::PatternLearner;
 pub use detector::OffsetDetector;
 
-use crate::memory::{Address, MemoryReader, MemoryError};
-use std::sync::Arc;
+use crate::memory::{Address, MemoryError};
 
 pub type HeuristicAnalyzer = HeuristicsEngine;
 

@@ -1,7 +1,7 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryReader};
-use crate::finders::result::{ClassResult, MethodResult};
+use crate::finders::result::MethodResult;
 use std::sync::Arc;
 use std::collections::HashMap;
 
@@ -160,11 +160,13 @@ impl VTableAnalyzer {
             }
         }
 
+        let shared_count = shared_entries.len();
+        let unique_first_count = unique_to_first.len();
         VTableComparison {
             shared_entries,
             unique_to_first,
             unique_to_second,
-            likely_inheritance: shared_entries.len() > 0 && unique_to_first.len() > 0,
+            likely_inheritance: shared_count > 0 && unique_first_count > 0,
         }
     }
 }

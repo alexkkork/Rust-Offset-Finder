@@ -79,6 +79,15 @@ impl ProgressManager {
         manager.multi.set_draw_target(ProgressDrawTarget::hidden());
         manager
     }
+
+    pub fn set_status(&self, _status: &str) {
+        // Status updates can be implemented if needed
+    }
+
+    pub fn finish_all(&self) {
+        // Finish all progress bars
+        // The MultiProgress will handle cleanup when dropped
+    }
 }
 
 impl Default for ProgressManager {

@@ -75,7 +75,7 @@ impl PatternCompiler {
         let mut table = HashMap::new();
         let len = pattern.len();
 
-        for i in 0..256u8 {
+        for i in 0..=255u8 {
             table.insert(i, len);
         }
 

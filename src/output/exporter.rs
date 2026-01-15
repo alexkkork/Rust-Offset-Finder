@@ -1,8 +1,7 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::output::{OffsetOutput, FunctionOffset, StructureOffsets, ClassOffset, ConstantValue};
+use crate::output::OffsetOutput;
 use crate::output::formatter::OutputFormatter;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{Write, BufWriter};
 use std::path::Path;

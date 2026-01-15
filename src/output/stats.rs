@@ -1,6 +1,6 @@
 // Tue Jan 13 2026 - Alex
 
-use crate::output::{OffsetOutput, FunctionOffset, StructureOffsets};
+use crate::output::OffsetOutput;
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 

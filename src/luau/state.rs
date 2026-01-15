@@ -1,9 +1,8 @@
 // Tue Jan 13 2026 - Alex
 
 use crate::memory::{Address, MemoryReader, MemoryError};
-use crate::luau::types::{LuauType, TypeTag};
+use crate::luau::types::TypeTag;
 use std::sync::Arc;
-use std::collections::HashMap;
 
 pub struct StateAnalyzer {
     reader: Arc<dyn MemoryReader>,
@@ -158,7 +157,7 @@ impl StateAnalyzer {
         let bytes = self.reader.read_bytes(data_addr, len)?;
 
         String::from_utf8(bytes)
-            .map_err(|_| MemoryError::InvalidString)
+            .map_err(|e| MemoryError::InvalidString(e.to_string()))
     }
 
     pub fn get_global_state_info(&self, state_addr: Address) -> Result<GlobalStateInfo, MemoryError> {

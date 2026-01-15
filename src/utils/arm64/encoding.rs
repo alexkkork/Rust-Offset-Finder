@@ -1,7 +1,5 @@
 // Tue Jan 13 2026 - Alex
 
-use super::Register;
-
 pub struct InstructionEncoder;
 
 impl InstructionEncoder {
@@ -52,15 +50,15 @@ impl InstructionEncoder {
 
     pub fn encode_adr(rd: u8, offset: i64) -> u32 {
         let rd = (rd & 0x1F) as u32;
-        let immlo = ((offset as u32) & 0x3);
-        let immhi = (((offset >> 2) as u32) & 0x7FFFF);
+        let immlo = (offset as u32) & 0x3;
+        let immhi = ((offset >> 2) as u32) & 0x7FFFF;
         (immlo << 29) | 0x10000000 | (immhi << 5) | rd
     }
 
     pub fn encode_adrp(rd: u8, offset: i64) -> u32 {
         let rd = (rd & 0x1F) as u32;
-        let immlo = (((offset >> 12) as u32) & 0x3);
-        let immhi = (((offset >> 14) as u32) & 0x7FFFF);
+        let immlo = ((offset >> 12) as u32) & 0x3;
+        let immhi = ((offset >> 14) as u32) & 0x7FFFF;
         (immlo << 29) | 0x90000000 | (immhi << 5) | rd
     }
 

@@ -33,12 +33,12 @@ impl PatternMatcher {
         let pat = self.parse_pattern(pattern, mask);
 
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let mut offset = 0;
             while offset < size {
@@ -63,12 +63,12 @@ impl PatternMatcher {
         let mut results = Vec::new();
 
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let mut offset = 0;
             while offset < size {
@@ -88,14 +88,37 @@ impl PatternMatcher {
         Ok(results)
     }
 
+    pub fn find_pattern_in_range(&self, pattern_bytes: &[u8], start: Address, end: Address) -> Result<Vec<Address>, MemoryError> {
+        let mut results = Vec::new();
+        let pattern = Pattern::from_bytes(pattern_bytes);
+        let size = (end.as_u64() - start.as_u64()) as usize;
+
+        let mut offset = 0;
+        while offset < size {
+            let read_size = (size - offset).min(self.chunk_size);
+            let addr = start + offset as u64;
+
+            if let Ok(data) = self.reader.read_bytes(addr, read_size) {
+                for match_offset in pattern.find_all_in(&data) {
+                    results.push(addr + match_offset as u64);
+                }
+            }
+
+            let overlap = pattern.len().saturating_sub(1);
+            offset += self.chunk_size.saturating_sub(overlap);
+        }
+
+        Ok(results)
+    }
+
     pub fn find_pattern(&self, pattern: &Pattern, regions: &[MemoryRegion]) -> Result<Option<Address>, MemoryError> {
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let mut offset = 0;
             while offset < size {
@@ -119,12 +142,12 @@ impl PatternMatcher {
         let mut results = Vec::new();
 
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let mut offset = 0;
             while offset < size {
@@ -188,12 +211,12 @@ impl MultiPatternMatcher {
         let mut results = Vec::new();
 
         for region in regions {
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let max_pattern_len = self.patterns.iter()
                 .map(|p| p.len())
@@ -229,12 +252,12 @@ impl MultiPatternMatcher {
                 break;
             }
 
-            if !region.protection.is_readable() {
+            if !region.protection().is_readable() {
                 continue;
             }
 
-            let start = region.range.start;
-            let size = region.range.size as usize;
+            let start = region.range().start();
+            let size = region.range().size() as usize;
 
             let max_pattern_len = self.patterns.iter()
                 .map(|p| p.len())

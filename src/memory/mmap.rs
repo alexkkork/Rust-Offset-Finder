@@ -1,6 +1,6 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
-use crate::memory::{Address, MemoryError, MemoryReader};
+use crate::memory::{Address, MemoryError, MemoryReader, MemoryRegion, MemoryRange, Protection};
 use memmap2::Mmap;
 use std::fs::File;
 use std::path::Path;
@@ -124,5 +124,15 @@ impl MemoryReader for MmapMemory {
         }
         String::from_utf8(bytes)
             .map_err(|e| MemoryError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
+    }
+
+    fn get_base_address(&self) -> Address {
+        self.base_address
+    }
+
+    fn get_regions(&self) -> Result<Vec<MemoryRegion>, MemoryError> {
+        let range = MemoryRange::from_start_size(self.base_address, self.mmap.len() as u64);
+        let region = MemoryRegion::new(range, Protection::Read, "mmap".to_string());
+        Ok(vec![region])
     }
 }

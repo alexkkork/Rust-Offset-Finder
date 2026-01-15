@@ -1,6 +1,6 @@
-// Tue Jan 13 2026 - Alex
+// Wed Jan 15 2026 - Alex
 
-use crate::memory::{Address, MemoryError, MemoryReader};
+use crate::memory::{Address, MemoryError, MemoryReader, MemoryRegion};
 use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -173,5 +173,13 @@ impl MemoryReader for MemoryCache {
         }
         String::from_utf8(bytes)
             .map_err(|e| MemoryError::Io(std::io::Error::new(std::io::ErrorKind::InvalidData, e)))
+    }
+
+    fn get_base_address(&self) -> Address {
+        self.reader.get_base_address()
+    }
+
+    fn get_regions(&self) -> Result<Vec<MemoryRegion>, MemoryError> {
+        self.reader.get_regions()
     }
 }
