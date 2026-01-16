@@ -84,6 +84,10 @@ impl FFlagDatabase {
             .unwrap_or_default()
     }
 
+    pub fn all_flags(&self) -> impl Iterator<Item = &KnownFlag> {
+        self.flags.values()
+    }
+
     fn add(&mut self, flag: KnownFlag) {
         let name = flag.name.to_string();
         let category = flag.category.to_string();
@@ -2528,5 +2532,40 @@ mod tests {
         let db = FFlagDatabase::new();
         let categories = db.categories();
         assert!(categories.len() > 10);
+    }
+
+    #[test]
+    fn test_flag_types() {
+        let db = FFlagDatabase::new();
+        let rendering = db.flags_in_category("Rendering");
+        assert!(!rendering.is_empty());
+        
+        let physics = db.flags_in_category("Physics");
+        assert!(!physics.is_empty());
+        
+        let network = db.flags_in_category("Network");
+        assert!(!network.is_empty());
+    }
+
+    #[test]
+    fn test_flag_retrieval() {
+        let db = FFlagDatabase::new();
+        
+        // Test retrieving specific flags
+        if let Some(flag) = db.get("FFlagRenderingEnabled0") {
+            assert_eq!(flag.category, "Rendering");
+        }
+        
+        // Test flag that doesn't exist
+        assert!(db.get("NonExistentFlag").is_none());
+    }
+
+    #[test]
+    fn test_category_count() {
+        let db = FFlagDatabase::new();
+        let categories = db.categories();
+        
+        // Should have many categories
+        assert!(categories.len() >= 30, "Expected at least 30 categories, got {}", categories.len());
     }
 }

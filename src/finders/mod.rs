@@ -9,6 +9,7 @@ pub mod properties;
 pub mod methods;
 pub mod constants;
 pub mod result;
+pub mod fflags;
 
 pub use result::{
     FinderResult, StructureOffsetResult, ClassResult,

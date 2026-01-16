@@ -117,7 +117,7 @@ impl FFlagParser {
             current = current + 1;
         }
 
-        String::from_utf8(bytes).map_err(|_| MemoryError::InvalidString)
+        String::from_utf8(bytes).map_err(|e| MemoryError::InvalidString(e.to_string()))
     }
 
     pub fn categorize_flags(&self, flags: &[FFlag]) -> Vec<FFlagCategory> {
