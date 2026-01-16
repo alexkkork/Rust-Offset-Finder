@@ -782,8 +782,15 @@ fn run_fflags(
     let regions = reader.get_regions()
         .map_err(|e| format!("Failed to get memory regions: {}", e))?;
 
-    let (start_addr, end_addr) = calculate_scan_range(&regions);
+    // Find readable regions and collect their data
+    println!("{} Found {} memory regions", "[+]".green(), regions.len());
 
+    // Read binary file directly for string searching (more reliable)
+    println!("{} Reading binary data...", "[*]".blue());
+    let binary_data = std::fs::read(&binary)
+        .map_err(|e| format!("Failed to read binary file: {}", e))?;
+    
+    println!("{} Binary size: {} MB", "[+]".green(), binary_data.len() / 1024 / 1024);
     println!("{} Scanning for FFlags...", "[*]".blue());
     println!();
 
@@ -811,10 +818,8 @@ fn run_fflags(
     let mut found_flags: Vec<&KnownFlag> = Vec::new();
     let mut not_found_flags: Vec<&KnownFlag> = Vec::new();
 
-    // Read binary data once
-    let data_size = (end_addr.as_u64() - start_addr.as_u64()).min(100_000_000) as usize;
-    let data = reader.read_bytes(start_addr, data_size)
-        .map_err(|e| format!("Failed to read binary: {}", e))?;
+    // Use the raw binary data for string searching
+    let data = &binary_data;
 
     for (i, flag) in flags_to_check.iter().enumerate() {
         if let Some(ref p) = pb {
